@@ -1,6 +1,9 @@
 from define_grid import *
+import os
 
-f = open('ww3_grd.inp','w')
+pwd = os.getcwd()
+
+f = open(pwd+'/ww3_grd.inp','w')
 
 f.write('$ -------------------------------------------------------------------- $\n')
 f.write('$ WAVEWATCH III Grid preprocessor input file                           $\n')

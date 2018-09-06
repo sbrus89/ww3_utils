@@ -1,6 +1,9 @@
 from define_initial import *
+import os
 
-f = open('ww3_strt.inp','w')
+pwd = os.getcwd()
+
+f = open(pwd+'/ww3_strt.inp','w')
 
 f.write('$ -------------------------------------------------------------------- $\n')
 f.write('$ WAVEWATCH III Initial conditions input file                          $\n')
