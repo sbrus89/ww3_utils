@@ -9,7 +9,7 @@ f.write('$ -------------------------------------------------------------------- 
 f.write('$ WAVEWATCH III Initial conditions input file                          $\n')
 f.write('$ -------------------------------------------------------------------- $\n')
 f.write('$\n')
-f.write('   '+str(itype) + '\n')
+f.write('   '+itype + '\n')
 f.write('$\n')
 if itype == 1:
   # Guassian iin frequency and space, cos type in direction
