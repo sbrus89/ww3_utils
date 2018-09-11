@@ -14,7 +14,7 @@ f = open(pwd+'/stations.txt','w')
 for sta in root:
   for owner in owners:
     if sta.attrib['owner'] == owner:
-      lon = str(float(sta.attrib['lon']) + 180.0)
+      lon = sta.attrib['lon']
       lat = sta.attrib['lat']
       name = "'"+sta.attrib['id']+"'"
       prgm = sta.attrib['pgm']      
