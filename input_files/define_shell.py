@@ -33,18 +33,22 @@ point_output_intvl = '3600'
 point_output_end   = end_time
 station_file = './stations.txt'
 
+# Output along tracks
 track_output_start = start_time
 track_output_intvl = '0'
 track_output_end   = end_time
 
+# Restart file output
 resrt_output_start = start_time
-resrt_output_intvl = '0'
+resrt_output_intvl = str(5*24*3600)
 resrt_output_end   = end_time
 
+# Boundary data output
 bound_output_start = start_time
 bound_output_intvl = '0'
 bound_output_end   = end_time
 
+# Separated feild data output (dummy)
 sepfd_output_start = start_time
 sepfd_output_intvl = '0'
 sepfd_output_end   = end_time
