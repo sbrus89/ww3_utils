@@ -3,8 +3,8 @@ import subprocess
 #--------------------
 # Request parameters
 #--------------------
-start_date = '2005-07-01 00:00'
-end_date   = '2005-08-01 00:00'
+start_date = '2005-06-01 00:00'
+end_date   = '2005-07-01 00:00'
 data_set   = 'CFSR hourly'
 parameters = ['uwind','vwind']
 products   = ['1 hr forecast','2 hr forecast','3 hr forecast','4 hr forecast','5 hr forecast','6 hr forecast']
@@ -54,5 +54,5 @@ command = ['curl','-b','rda_auth_cookies','-d','"dsid=ds'         +data_set_code
                                               + 'wlon='           +region_box[0]                                     +';' \
                                               + 'elon='           +region_box[1]                                     +';' \
                                               + 'ofmt=netCDF"','https://rda.ucar.edu/php/dsrqst.php']
-print  ' '.join(command)
-subprocess.call(command)
+command =  ' '.join(command)
+subprocess.call(command,shell=True)
