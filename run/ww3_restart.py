@@ -87,7 +87,7 @@ def restart_time():
 
       # Find restart output
       output = cols[4]
-      if output[7] == 'X':
+      if output[7] == 'X' or output[7] == 'L':
         restart_time = date_time_formatted
 
   return restart_time,start_time
