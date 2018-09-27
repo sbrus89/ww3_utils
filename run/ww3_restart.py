@@ -57,8 +57,10 @@ def restart_time():
   lines = f.read().splitlines()
  
   output_intervals = False
+  restart_found = False
   restart_time = ''
   start_time = ''
+  end_time = ''
   for line in lines:
 
     # Find lines inside output table
@@ -89,8 +91,13 @@ def restart_time():
       output = cols[4]
       if output[7] == 'X' or output[7] == 'L':
         restart_time = date_time_formatted
+        restart_found = True
 
-  return restart_time,start_time
+  # Set restart_time as the final time if no restart was written
+  if restart_found == False:
+    end_time = date_time_formatted 
+
+  return restart_time,start_time,end_time
 
 #############################################################################################################
 
@@ -136,9 +143,27 @@ def update_shel_input(restart_time):
 #############################################################################################################
  
 if __name__ == '__main__':
-  restart_time,start_time = restart_time()
-  update_shel_input(restart_time)
-  restart_time = restart_time.replace(' ','_')
-  start_time = start_time.replace(' ','_')
-  link_restart(restart_time,start_time)
-  rename_outputs(restart_time,start_time)
+
+  restart_time,start_time,end_time = restart_time()
+
+  if restart_time:
+    update_shel_input(restart_time)
+
+    restart_time = restart_time.replace(' ','_')
+    start_time = start_time.replace(' ','_')
+
+    link_restart(restart_time,start_time)
+
+    rename_outputs(restart_time,start_time)
+  else:
+    end_time = end_time.replace(' ','_')
+    start_time = start_time.replace(' ','_')
+
+    rename_outputs(end_time,start_time)
+
+
+
+
+
+
+
