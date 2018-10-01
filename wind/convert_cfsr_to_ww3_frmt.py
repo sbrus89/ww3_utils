@@ -1,5 +1,6 @@
 import subprocess
 import os
+import glob
 
 # Combines two CFSR NetCDF files for a given month
 # into a single NetCDF file that can be read by ww3_prnc.
@@ -16,8 +17,12 @@ import os
 
 pwd = os.getcwd()+'/'
 
-first_file  = 'wnd10mx0.5.gdas.200505.grb2.nc' 
-second_file = 'wnd10mx0.5.gdas.200506.grb2.nc'
+files = sorted(glob.glob(pwd+'*.nc'))
+first_file  = files[0].split('/')[-1] 
+second_file = files[1].split('/')[-1]
+
+print first_file
+print second_file
 
 print 'Concatenatng files...'
 subprocess.call(['ncrcat',pwd+first_file,second_file,pwd+'tmp.nc'])
