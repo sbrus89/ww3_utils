@@ -1,5 +1,7 @@
 import netCDF4 
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.gridspec as gridspec
 import numpy as np
 import glob
 import pprint
@@ -133,28 +135,41 @@ for i,sta in enumerate(stations):
 
     # Plot station location
     fig = plt.figure(figsize=[6,12])
-    ax = fig.add_subplot(len(variables)+1,1,1)
-    m = Basemap(projection='cyl',llcrnrlat=-90,urcrnrlat=90,\
-                llcrnrlon=-180,urcrnrlon=180,resolution='c')
+    gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
+   
+
+    ax = fig.add_subplot(gs[0,0])
+    m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
+                                 llcrnrlon=-180,urcrnrlon=180,resolution='c')
     m.fillcontinents(color='tan',lake_color='lightblue')
     m.drawcoastlines()
     ax.plot(station_loc['lon'][i],station_loc['lat'][i],'ro')
-    ax.set_title('Station '+sta)
+    
+
+    ax = fig.add_subplot(gs[0,1])
+    m = Basemap(projection='cyl',llcrnrlat=station_loc['lat'][i]-7.0,urcrnrlat=station_loc['lat'][i]+7.0,\
+                                 llcrnrlon=station_loc['lon'][i]-10.0,urcrnrlon=station_loc['lon'][i]+10.0,resolution='l')
+    m.fillcontinents(color='tan',lake_color='lightblue')
+    m.drawcoastlines()
+    ax.plot(station_loc['lon'][i],station_loc['lat'][i],'ro')
 
     # Plot modeled and observed data timeseries
     for k,var in enumerate(variables):
       print '  '+var
-      ax = fig.add_subplot(len(variables)+1,1,k+2)
+      ax = fig.add_subplot(gs[k+1,:])
       if variables[var]['recip'] == True:
         data[var][:,i] = 1.0/data[var][:,i]
-      l1, = ax.plot(output_datetime,data[var][:,i])
-      l2, = ax.plot(output_datetime,obs_data[var])
+      l1, = ax.plot(output_datetime,obs_data[var],'C1')
+      l2, = ax.plot(output_datetime,data[var][:,i],'C0')
       ax.set_title(variables[var]['label'])
+      ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+      #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
       ax.set_xlabel('time')
       ax.set_ylabel(var)
-    lgd = plt.legend((l1,l2),('Modeled','Observed'),loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
+    lgd = plt.legend((l1,l2),('Observed','Modeled'),loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
+    st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
     fig.tight_layout()
-    fig.savefig(sta+'_'+var+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,))
+    fig.savefig(sta+'_'+var+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
     plt.close()
 
 
