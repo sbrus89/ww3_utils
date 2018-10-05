@@ -176,9 +176,12 @@ def replace_ww3_shel_inp_line(file_lines,nline,new_text):
 
 #############################################################################################################
 
-def setup_restart(restart_time=None,stop_time=None,restart_interval=None):
+def setup_restart(restart_time=None,stop_time=None,restart_interval=None,check_log=True):
 
-  restart_time,start_time,end_time = find_restart_time(restart_time)
+  if check_log:
+    # Get the most recent restart time from the log.ww3 file, If a restart time is 
+    # provided, check to make sure it agrees with the log file.
+    restart_time,start_time,end_time = find_restart_time(restart_time)
 
   if restart_time:
     update_shel_input(restart_time,stop_time,restart_interval)
@@ -201,12 +204,13 @@ if __name__ == '__main__':
   import argparse
 
   parser = argparse.ArgumentParser()
-  parser.add_argument("--restart_time"     , type=str, help="time for model restart (YYYYMMDD hhmmss)")
-  parser.add_argument("--stop_time"        , type=str, help="time for model end     (YYYYMMDD hhmmss)")
-  parser.add_argument("--restart_interval" , type=str, help="interval to write restart file (seconds)")   
+  parser.add_argument("--restart_time"     , type=str,  help="time for model restart (YYYYMMDD hhmmss)")
+  parser.add_argument("--stop_time"        , type=str,  help="time for model end     (YYYYMMDD hhmmss)")
+  parser.add_argument("--restart_interval" , type=str,  help="interval to write restartfile (seconds)")   
+  parser.add_argument("--skip_log"         , action='store_false', help="don't check the log.ww3 file for the latest restart time")
   args = parser.parse_args()
 
-  setup_restart(args.restart_time, args.stop_time, args.restart_interval)
+  setup_restart(args.restart_time, args.stop_time, args.restart_interval, args.skip_log)
 
 
 

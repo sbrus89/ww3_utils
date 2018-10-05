@@ -75,7 +75,8 @@ if __name__ == '__main__':
       interval = str(int(restart_interval[i])*24*3600)
       pre_cmds = ['python ww3_restart.py --restart_time="'+start+'" '+ \
                                          '--stop_time="'+end+'" '+ \
-                                         '--restart_interval="'+interval+'"']
+                                         '--restart_interval="'+interval+'" '+ \
+                                         '--skip_log']
     else:
       pre_cmds = []
 
