@@ -23,7 +23,6 @@ def link_restart(restart_time,start_time):
   restart_max = 0
   restart_files = glob.glob('restart*.ww3')
   for f in restart_files:
-    print f
     restart_id = f[ f.find('restart')+len('restart'):f.rfind('.')]
     if restart_id.strip():
       restart_n = int(restart_id)
@@ -44,7 +43,7 @@ def link_restart(restart_time,start_time):
 
 #############################################################################################################
 
-def restart_time():
+def find_restart_time(restart_time_expected=None):
   pwd = os.getcwd()
 
   log_file = pwd+'/log.ww3'
@@ -96,6 +95,11 @@ def restart_time():
   # Set restart_time as the final time if no restart was written
   if restart_found == False:
     end_time = date_time_formatted 
+    print "no restart file written"
+  else:
+    if restart_time_expected and restart_time != restart_time_expected:
+      print "restart time is different from what is expected"
+      raise SystemExit(0)
 
   return restart_time,start_time,end_time
 
@@ -105,7 +109,7 @@ def rename_outputs(restart_time,start_time):
 
   pwd = os.getcwd()
 
-  files = ['out_grd.ww3','out_pnt.ww3']
+  files = ['out_grd.ww3','out_pnt.ww3','log.ww3']
   interval = start_time + '-' + restart_time
 
   for name in files:
@@ -115,7 +119,7 @@ def rename_outputs(restart_time,start_time):
 
 #############################################################################################################
 
-def update_shel_input(restart_time):
+def update_shel_input(restart_time,stop_time=None,restart_interval=None):
 
   pwd = os.getcwd()
 
@@ -125,15 +129,11 @@ def update_shel_input(restart_time):
   lines = f.read().splitlines()
   f.close()
 
-  i = 0
-  for j,line in enumerate(lines):
-    if line[0] != '$':
-      i = i + 1
-      if i == 8:
-        start_time_line = j
-        break
-
-  lines[start_time_line] = '   '+restart_time
+  replace_ww3_shel_inp_line(lines,8,restart_time)
+  if stop_time:
+    replace_ww3_shel_inp_line(lines,9,stop_time)
+  if restart_interval:
+    replace_ww3_shel_inp_line(lines,17,'  '.join([restart_time,restart_interval,stop_time]))
 
   f = open(shel_inp,'w')
   for line in lines:
@@ -141,13 +141,47 @@ def update_shel_input(restart_time):
   f.close()
 
 #############################################################################################################
- 
-if __name__ == '__main__':
 
-  restart_time,start_time,end_time = restart_time()
+def replace_ww3_shel_inp_line(file_lines,nline,new_text):
+
+  # nline number represents requried, non-comment lines (skips all station locations)
+  # 1-7: define input to be used
+  # 8: start time
+  # 9: stop time
+  # 10: define output data
+  # 11-13: mean wave parameters output
+  # 14: point output
+  # 15: 'STOPSTING'
+  # 16: track output
+  # 17: restart output
+  # 18: boundary output
+  # 19: separated output wave field
+
+  stop_string = False
+  i = 0
+  for j,line in enumerate(file_lines):
+    if line[0] != '$':
+      if i > 14 and stop_string == False:
+        if line.find('STOPSTRING') > 0:
+          stop_string = True
+      else:
+        i = i + 1
+
+      if i == nline:
+        input_line = j
+        break
+
+  file_lines[input_line] = '   '+new_text
+
+
+#############################################################################################################
+
+def setup_restart(restart_time=None,stop_time=None,restart_interval=None):
+
+  restart_time,start_time,end_time = find_restart_time(restart_time)
 
   if restart_time:
-    update_shel_input(restart_time)
+    update_shel_input(restart_time,stop_time,restart_interval)
 
     restart_time = restart_time.replace(' ','_')
     start_time = start_time.replace(' ','_')
@@ -161,8 +195,18 @@ if __name__ == '__main__':
 
     rename_outputs(end_time,start_time)
 
+#############################################################################################################
 
+if __name__ == '__main__':
+  import argparse
 
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--restart_time"     , type=str, help="time for model restart (YYYYMMDD hhmmss)")
+  parser.add_argument("--stop_time"        , type=str, help="time for model end     (YYYYMMDD hhmmss)")
+  parser.add_argument("--restart_interval" , type=str, help="interval to write restart file (seconds)")   
+  args = parser.parse_args()
+
+  setup_restart(args.restart_time, args.stop_time, args.restart_interval)
 
 
 
