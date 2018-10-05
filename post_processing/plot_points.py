@@ -133,11 +133,11 @@ for i,sta in enumerate(stations):
         plot_obs_data = True
       obs_data[var][obs_data[var] >= fill_val] = np.nan
 
-    # Plot station location
+    # Create figure 
     fig = plt.figure(figsize=[6,12])
     gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
    
-
+    # Plot global station location
     ax = fig.add_subplot(gs[0,0])
     m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
                                  llcrnrlon=-180,urcrnrlon=180,resolution='c')
@@ -145,7 +145,7 @@ for i,sta in enumerate(stations):
     m.drawcoastlines()
     ax.plot(station_loc['lon'][i],station_loc['lat'][i],'ro')
     
-
+    # Plot local station location
     ax = fig.add_subplot(gs[0,1])
     m = Basemap(projection='cyl',llcrnrlat=station_loc['lat'][i]-7.0,urcrnrlat=station_loc['lat'][i]+7.0,\
                                  llcrnrlon=station_loc['lon'][i]-10.0,urcrnrlon=station_loc['lon'][i]+10.0,resolution='l')
