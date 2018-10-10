@@ -2,10 +2,11 @@ import subprocess
 import os
 import glob
 
-# Set directories
-run_direc = '/lustre/scratch1/turquoise/sbrus/WW3_testing/glo_15m/' 
-output_direc = '/lustre/scratch1/turquoise/sbrus/WW3_testing/glo_15m/post_processing/model_output/' 
 pwd = os.getcwd()
+
+# Set directories
+run_direc = '/lustre/scratch4/turquoise/sbrus/WW3_testing/glo_15m/' 
+output_direc = pwd+'/model_output/' 
 
 # Output type options
 out_types = [{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
