@@ -185,13 +185,14 @@ def setup_restart(restart_time=None,stop_time=None,restart_interval=None,check_l
 
   if restart_time:
     update_shel_input(restart_time,stop_time,restart_interval)
+    
+    if check_log:
+      restart_time = restart_time.replace(' ','_')
+      start_time = start_time.replace(' ','_')
 
-    restart_time = restart_time.replace(' ','_')
-    start_time = start_time.replace(' ','_')
+      link_restart(restart_time,start_time)
 
-    link_restart(restart_time,start_time)
-
-    rename_outputs(restart_time,start_time)
+      rename_outputs(restart_time,start_time)
   else:
     end_time = end_time.replace(' ','_')
     start_time = start_time.replace(' ','_')
