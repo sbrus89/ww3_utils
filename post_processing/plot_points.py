@@ -12,13 +12,17 @@ plt.switch_backend('agg')
 
 pwd = os.getcwd()
 
-model_direc = pwd+'/model_data/'
+year = '2005'
+model_direcs = {'glo_30m':pwd+'/model_data/',
+                'glo_15m':'/users/sbrus/scratch4/WW3_testing/glo_15m/post_processing/june/model_data/'}
 obs_direc = pwd+'/obs_data/'
 
-wav_files = sorted(glob.glob(model_direc+'ww3*.nc'))
-wnd_files = sorted(glob.glob(model_direc+'cfsr*.nc'))
-nfiles = len(wav_files)
-year = '2005'
+runs = {}
+for run in model_direcs:
+  direc = model_direcs[run]
+  wav_files = sorted(glob.glob(direc+'ww3*.nc'))
+  wnd_files = sorted(glob.glob(direc+'cfsr*.nc'))
+  runs[run] = [wav_files,wnd_files]
 
 #--------------------------
 # Define variables to plot
@@ -48,40 +52,43 @@ variables = {'hs'  :{'obs_col' : 8,
 #-----------------------------------
 # Read point data from NetCDF files
 #-----------------------------------
-for j,files in enumerate([wav_files,wnd_files]):
-  for i,name in enumerate(files):
-    print name.split('/')[-1]
-  
-    nc_file = netCDF4.Dataset(name,'r')
-  
-    # Initializations for first iteration
-    if j == 0 and i == 0:
-        # Station names
-        stations = netCDF4.chartostring(nc_file.variables['station_name'][:,:])
-        nstations = len(stations)
-      
-        # Station locations
-        station_loc = {}
-        station_loc['lon'] = np.squeeze(nc_file.variables['longitude'][:])
-        station_loc['lat'] = np.squeeze(nc_file.variables['latitude'][:])
-  
-        # Model output data
-        data = {}
-        for var in variables:
-          data[var] = np.empty((nfiles,nstations))
-  
-        # Time information
-        output_time = np.empty(nfiles)
-        ref_date = nc_file.variables['time'].getncattr('units').replace('days since ','')
-        ref_date = datetime.datetime.strptime(ref_date,'%Y-%m-%d %H:%M:%S')
+data = {}
+stations = {}
+for k,run in enumerate(runs):
+  data_files = runs[run]
+  for j,files in enumerate(data_files):
+    for i,name in enumerate(files):
+      print name.split('/')[-1]
     
-    # Get time and output variables
-    if j == 0:
-      output_time[i] = nc_file.variables['time'][:]
-    for var in variables:
-      if var in nc_file.variables:
-        data[var][i][:] = nc_file.variables[var][:]
-
+      nc_file = netCDF4.Dataset(name,'r')
+    
+      # Initializations for first iteration of run
+      if j == 0 and i == 0:
+          # Station information
+          stations[run] = {}
+          stations[run]['name'] = netCDF4.chartostring(nc_file.variables['station_name'][:,:]).tolist()
+          stations[run]['lon'] = np.squeeze(nc_file.variables['longitude'][:])
+          stations[run]['lat'] = np.squeeze(nc_file.variables['latitude'][:])
+          nstations = len(stations[run]['name'])
+  
+          # Model output data (nfiles = number of timesnaps, 1 timesnap per file)
+          nfiles = len(files)
+          data[run] = {}
+          for var in variables:
+            data[run][var] = np.empty((nfiles,nstations))
+    
+          # Time information
+          output_time = np.empty(nfiles)
+          ref_date = nc_file.variables['time'].getncattr('units').replace('days since ','')
+          ref_date = datetime.datetime.strptime(ref_date,'%Y-%m-%d %H:%M:%S')
+      
+      # Get time and output variables
+      if j == 0:
+        output_time[i] = nc_file.variables['time'][:]
+      for var in variables:
+        if var in nc_file.variables:
+          data[run][var][i][:] = nc_file.variables[var][:]
+  
 
 # Convert output times to date format
 output_date = []
@@ -94,7 +101,13 @@ for t in output_time:
 #-------------------------------------------------
 # Read observation data and plot for each station
 #-------------------------------------------------
-for i,sta in enumerate(stations):
+station_list = [] 
+for run in stations:
+  for sta in stations[run]['name']:
+    station_list.append(sta)
+station_list = list(set(station_list))
+
+for i,sta in enumerate(station_list):
   print sta
 
   # Initialize variable for observation data
@@ -137,36 +150,53 @@ for i,sta in enumerate(stations):
     fig = plt.figure(figsize=[6,12])
     gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
    
+    # Find station location 
+    for run in stations:
+      if sta in stations[run]['name']:
+        ind = stations[run]['name'].index(sta)
+        lon = stations[run]['lon'][ind]
+        lat = stations[run]['lat'][ind]
+        break
+   
     # Plot global station location
     ax = fig.add_subplot(gs[0,0])
     m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
                                  llcrnrlon=-180,urcrnrlon=180,resolution='c')
     m.fillcontinents(color='tan',lake_color='lightblue')
     m.drawcoastlines()
-    ax.plot(station_loc['lon'][i],station_loc['lat'][i],'ro')
+    ax.plot(lon,lat,'ro')
     
     # Plot local station location
     ax = fig.add_subplot(gs[0,1])
-    m = Basemap(projection='cyl',llcrnrlat=station_loc['lat'][i]-7.0,urcrnrlat=station_loc['lat'][i]+7.0,\
-                                 llcrnrlon=station_loc['lon'][i]-10.0,urcrnrlon=station_loc['lon'][i]+10.0,resolution='l')
+    m = Basemap(projection='cyl',llcrnrlat=lat-7.0 ,urcrnrlat=lat+7.0,\
+                                 llcrnrlon=lon-10.0,urcrnrlon=lon+10.0,resolution='l')
     m.fillcontinents(color='tan',lake_color='lightblue')
     m.drawcoastlines()
-    ax.plot(station_loc['lon'][i],station_loc['lat'][i],'ro')
+    ax.plot(lon,lat,'ro')
 
     # Plot modeled and observed data timeseries
     for k,var in enumerate(variables):
       print '  '+var
+      lines = []
+      labels = []
       ax = fig.add_subplot(gs[k+1,:])
-      if variables[var]['recip'] == True:
-        data[var][:,i] = 1.0/data[var][:,i]
-      l1, = ax.plot(output_datetime,obs_data[var],'C1')
-      l2, = ax.plot(output_datetime,data[var][:,i],'C0')
+      l1, = ax.plot(output_datetime,obs_data[var])
+      lines.append(l1)
+      labels.append('Observed')
+      for run in data:
+        if sta in stations[run]['name']:
+          ind = stations[run]['name'].index(sta)
+          if variables[var]['recip'] == True:
+            data[run][var][:,ind] = 1.0/data[run][var][:,ind]
+          l2, = ax.plot(output_datetime,data[run][var][:,ind])
+          lines.append(l2)
+          labels.append(run)
       ax.set_title(variables[var]['label'])
       ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
       #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
       ax.set_xlabel('time')
       ax.set_ylabel(var)
-    lgd = plt.legend((l1,l2),('Observed','Modeled'),loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
+    lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
     st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
     fig.tight_layout()
     fig.savefig(sta+'_'+var+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
