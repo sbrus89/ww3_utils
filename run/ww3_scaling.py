@@ -3,7 +3,8 @@ import subprocess
 import submission_script
 import os
 
-pes = [36,72,144,288,576,1152]
+pes = [36,72,144,288,576,1152,2304]
+time = 4.0
 
 if __name__ == '__main__':
 
@@ -19,12 +20,18 @@ if __name__ == '__main__':
     post_cmds = ['mkdir '+np_dir,
                  'mv '+job_name+'.o* '+np_dir,
                  'mv '+job_name+'.e* '+np_dir]
+ 
+    if np > 2528:
+      queue = 'standard'
+    else:
+      queue = 'interactive'
 
     # Write the submission script
     submission_script.write_submission_script(machine='grizzly',
+                                              time=time,
                                               ncores=np,
                                               job_name=job_name,
-                                              queue='interactive',
+                                              queue=queue,
                                               exe='ww3_shel',
                                               filename=sub_file,
                                               post_cmds=post_cmds)
