@@ -7,6 +7,7 @@ pwd = os.getcwd()
 # Set directories
 run_direc = '/lustre/scratch4/turquoise/sbrus/WW3_testing/glo_15m/' 
 output_direc = pwd+'/model_output/' 
+data_direc = pwd+'/model_data'
 
 # Output type options
 out_types = [{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
@@ -80,3 +81,7 @@ if __name__ == '__main__':
       # Run the ww3_ounp program
       subprocess.call(['srun','-n','4',pwd+'/ww3_ounp'])
   
+  # Move file to data directory
+  if not os.path.exists(data_direc):
+    subprocess.call(['mkdir',data_direc])
+  subprocess.call(['mv *.nc',data_direc])
