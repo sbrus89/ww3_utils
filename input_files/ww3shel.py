@@ -33,19 +33,21 @@ def write_ww3_shel_inp():
   f.write('$ Fields of mean wave parameters                                        '+'\n')
   f.write('$\n')
   f.write('   '+'  '.join([field_output_start,field_output_intvl,point_output_end])+'\n')
-  f.write('   '+'N'+'\n') # Assumes namelist field selection
-  f.write('   ')
-  for field in fields:
-    f.write(field+' ')
-  f.write('\n')
+  if int(field_output_intvl) > 0:
+    f.write('   '+'N'+'\n') # Assumes namelist field selection
+    f.write('   ')
+    for field in fields:
+      f.write(field+' ')
+    f.write('\n')
   f.write('$\n')
   f.write('$ Point output                                                          '+'\n')
   f.write('$\n')
   f.write('   '+'  '.join([point_output_start,point_output_intvl,point_output_end])+'\n')
-  stations = open(station_file,'r').read().splitlines()
-  for sta in stations:
-    f.write('   '+sta+'\n')
-  f.write("   0.0  0.0  'STOPSTRING'"+'\n')
+  if int(point_output_intvl) > 0:
+    stations = open(station_file,'r').read().splitlines()
+    for sta in stations:
+      f.write('   '+sta+'\n')
+    f.write("   0.0  0.0  'STOPSTRING'"+'\n')
   f.write('$\n')
   f.write('$ Output along track                                                    '+'\n')
   f.write('$\n')
