@@ -14,12 +14,27 @@ import glob
 #    beginning with the 01 hour of the first day.
 #
 # The latitude dimension also has to be altered for ww3_prnc
+#
+# For ocean current data, the u and v components must first be
+# appended into a single file.
+
+
 
 pwd = os.getcwd()+'/'
 
 files = sorted(glob.glob(pwd+'*.nc'))
+
 first_file  = files[0].split('/')[-1] 
 second_file = files[1].split('/')[-1]
+
+if files[0].find('ocn') >= 0:
+  print 'Appending files...'  
+  fileA = files[0].split('/')[-1]
+  fileB = files[2].split('/')[-1]
+  subprocess.call(['ncks -A',pwd+fileB,pwd+fileA])
+  fileA = files[1].split('/')[-1]
+  fileB = files[3].split('/')[-1]
+  subprocess.call(['ncks -A',pwd+fileB,pwd+fileA])
 
 print first_file
 print second_file
