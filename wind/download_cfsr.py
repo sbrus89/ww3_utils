@@ -3,13 +3,22 @@ import subprocess
 #--------------------
 # Request parameters
 #--------------------
-start_date = '2005-06-01 00:00'
-end_date   = '2005-07-01 00:00'
+start_date = '2005-05-01 00:00'
+end_date   = '2005-06-01 00:00'
 data_set   = 'CFSR hourly'
-parameters = ['uwind','vwind']
-products   = ['1 hr forecast','2 hr forecast','3 hr forecast','4 hr forecast','5 hr forecast','6 hr forecast']
-grids      = ['0.5x0.5']
-levels     = ['specified height above ground: 10m']
+#parameters = ['uwind','vwind']
+#products   = ['1 hr forecast','2 hr forecast','3 hr forecast','4 hr forecast','5 hr forecast','6 hr forecast']
+#levels     = ['specified height above ground: 10m']
+#grids      = ['0.5x0.5 (720x361)']
+parameters = ['ucurrent','vcurrent']
+products   = ['1 hr average (initial+0 to initial+1)',
+              '1 hr average (initial+1 to initial+2)',
+              '1 hr average (initial+2 to initial+3)',
+              '1 hr average (initial+3 to initial+4)',
+              '1 hr average (initial+4 to initial+5)',
+              '1 hr average (initial+5 to initial+6)']
+levels     = ['depth below sea level: 5m']
+grids      = ['0.5x0.5 (720x360)']
 region_box = ['-180','180','-90','90']
 
 #------------------------
@@ -18,18 +27,28 @@ region_box = ['-180','180','-90','90']
 data_set_codes  = {'CFSR hourly'  :'093.1',
                    'CFSRv2 hourly':'094.1'}
 parameter_codes = {'uwind':'3%217-0.2-1:0.2.2',
-                   'vwind':'3%217-0.2-1:0.2.3'}
+                   'vwind':'3%217-0.2-1:0.2.3',
+                   'ucurrent':'3%217-4.2-1:10.1.2',
+                   'vcurrent':'3%217-4.2-1:10.1.3'}
 product_codes   = {'6 hr forecast':'3',
                    '3 hr forecast':'119',
                    '1 hr forecast':'486',
                    '2 hr forecast':'488',
                    '4 hr forecast':'490',
-                   '5 hr forecast':'492'}
-grid_codes      = {'0.312x0.312':'83',
-                   '0.5x0.5'    :'57',
-                   '1.875x1.904':'3' ,
-                   '2.5x2.5'    :'4'}
-level_codes     = {'specified height above ground: 10m':'223'}
+                   '5 hr forecast':'492',
+                   '1 hr average (initial+0 to initial+1)':'944',
+                   '1 hr average (initial+1 to initial+2)':'945',
+                   '1 hr average (initial+2 to initial+3)':'946',
+                   '1 hr average (initial+3 to initial+4)':'947',
+                   '1 hr average (initial+4 to initial+5)':'948',
+                   '1 hr average (initial+5 to initial+6)':'949'}
+grid_codes      = {'0.312x0.312'       :'83',
+                   '0.5x0.5 (720x361)' :'57',
+                   '0.5x0.5 (720x360)' :'63',
+                   '1.875x1.904'       :'3' ,
+                   '2.5x2.5'           :'4'}
+level_codes     = {'specified height above ground: 10m':'223',
+                   'depth below sea level: 5m'         :'128'}
 
 #----------------
 # Log in command
