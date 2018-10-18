@@ -1,5 +1,8 @@
-from ww3_shel_config import *
 import os
+import sys
+sys.dont_write_bytecode = True
+from ww3_shel_config import *
+
 
 def write_ww3_shel_inp():
   

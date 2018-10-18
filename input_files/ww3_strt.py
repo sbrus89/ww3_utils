@@ -1,5 +1,7 @@
-from ww3_strt_config import *
 import os
+import sys
+sys.dont_write_bytecode = True
+from ww3_strt_config import *
 
 def write_ww3_strt_inp():
   
