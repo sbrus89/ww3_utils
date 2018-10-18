@@ -1,4 +1,4 @@
-from define_grid import *
+from ww3_grid_config import *
 import os
 
 def write_ww3_grid_inp():

@@ -1,4 +1,4 @@
-from define_input import *
+from ww3_prnc_config import *
 import os
 
 def write_ww3_prnc_inp():

@@ -1,4 +1,4 @@
-from define_shell import *
+from ww3_shel_config import *
 import os
 
 def write_ww3_shel_inp():

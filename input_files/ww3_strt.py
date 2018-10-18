@@ -1,4 +1,4 @@
-from define_initial import *
+from ww3_strt_config import *
 import os
 
 def write_ww3_strt_inp():

@@ -1,11 +1,11 @@
 import os
-import define_switches 
+import ww3_switch_config  
 
 def write_switch():
   
   pwd = os.getcwd()
   
-  switches = define_switches.switch
+  switches = ww3_switch_config.switch
   
   f = open(pwd+'/switch','w')
   
