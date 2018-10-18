@@ -3,10 +3,8 @@ import calendar
 import pprint
 import submission_script
 import os
+from ww3_run_config import *
 
-year = 2005
-month = 9 
-days_per_run = 5
 
 test = False 
 
@@ -95,11 +93,11 @@ if __name__ == '__main__':
  
 
     # Write the submission script
-    submission_script.write_submission_script(machine='grizzly',
-                                              ncores=216,
-                                              job_name='ww3_glo_15m',
-                                              queue='interactive',
-                                              exe='ww3_shel',
+    submission_script.write_submission_script(machine=machine,
+                                              ncores=ncores,
+                                              job_name=job_name,
+                                              queue=queue,
+                                              exe=exe,
                                               filename=sub_file,
                                               pre_cmds=pre_cmds,
                                               post_cmds=post_cmds)
