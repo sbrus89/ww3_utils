@@ -31,10 +31,10 @@ if files[0].find('ocn') >= 0:
   print 'Appending files...'  
   fileA = files[0].split('/')[-1]
   fileB = files[2].split('/')[-1]
-  subprocess.call(['ncks -A',pwd+fileB,pwd+fileA])
+  subprocess.call(['ncks','-A',pwd+fileB,pwd+fileA])
   fileA = files[1].split('/')[-1]
   fileB = files[3].split('/')[-1]
-  subprocess.call(['ncks -A',pwd+fileB,pwd+fileA])
+  subprocess.call(['ncks','-A',pwd+fileB,pwd+fileA])
 
 print first_file
 print second_file
