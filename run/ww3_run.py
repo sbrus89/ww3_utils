@@ -3,7 +3,11 @@ import calendar
 import pprint
 import submission_script
 import os
-from ww3_run_config import *
+import sys
+sys.dont_write_bytcode = True
+import yaml
+import pprint
+
 
 
 test = False 
@@ -59,8 +63,38 @@ def get_date_ranges(year,month,days_per_run):
 if __name__ == '__main__':
 
   pwd = os.getcwd()
+ 
+  f = open(pwd+'/ww3_run.config')
+  cfg = yaml.load(f)
+  pprint.pprint(cfg)
 
-  date_range,restart_interval = get_date_ranges(year,month,days_per_run)
+
+  run_grid = 'y'
+  if os.path.exists(pwd+'/mod_def.ww3'):
+    run_grid = raw_input('mod_def.ww3 file exists, run ww3_grid? ')
+  if run_grid == 'y':
+    subprocess.call(['python','ww3_grid.py'])
+    subprocess.call([pwd+'/ww3_grid'])
+
+  run_strt = 'y'
+  if os.path.exists(pwd+'/restart.ww3'):
+    run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
+  if run_strt == 'y':
+    subprocess.call(['python','ww3_strt.py'])
+    subprocess.call([pwd+'/ww3_strt.py'])
+
+  run_prnc = 'y'
+  if os.path.exists(pwd+'/wind.ww3'):
+    run_prnc = raw_input('wind.ww3 file exists, run ww3_prnc? ')
+  if run_prnc == 'y':
+    subprocess.call(['python','ww3_prnc.py'])
+    month_name = calendar.month_name[cfg["month"]].lower()
+    subprocess.call(['ln','-s',wind_direc+month_name,'wind.nc'])
+    subprocess.call([pwd+'/ww3_prnc'])
+
+
+
+  date_range,restart_interval = get_date_ranges(cfg["year"],cfg["month"],cfg["days_per_run"])
 
   for i in range(len(date_range)):
     start = date_range[i][0]
@@ -93,28 +127,28 @@ if __name__ == '__main__':
  
 
     # Write the submission script
-    submission_script.write_submission_script(machine=machine,
-                                              ncores=ncores,
-                                              job_name=job_name,
-                                              queue=queue,
-                                              exe=exe,
+    submission_script.write_submission_script(machine=cfg["machine"],
+                                              ncores=cfg["ncores"],
+                                              job_name=cfg["job_name"],
+                                              queue=cfg["queue"],
+                                              exe=cfg["exe"],
                                               filename=sub_file,
                                               pre_cmds=pre_cmds,
                                               post_cmds=post_cmds)
 
 
-    # Submit the runs with depenencies
-    if os.path.isfile(pwd+'/ww3_shel'):
-      if i > 0:
-        run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
-      else:
-        run_cmd = ['sbatch',sub_file]
-
-      print ' '.join(run_cmd)
-      output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
-      print output
-
-      job_id = output.split()[-1]
+#    # Submit the runs with depenencies
+#    if os.path.isfile(pwd+'/'+cfg['exe']):
+#      if i > 0:
+#        run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
+#      else:
+#        run_cmd = ['sbatch',sub_file]
+#
+#      print ' '.join(run_cmd)
+#      output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
+#      print output
+#
+#      job_id = output.split()[-1]
 
     
     #-------------------------------------------------------------------------------

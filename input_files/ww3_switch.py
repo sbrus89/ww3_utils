@@ -1,13 +1,16 @@
 import os
 import sys
 sys.dont_write_bytecode = True
-import ww3_switch_config  
+import yaml
+import pprint
 
 def write_switch():
   
   pwd = os.getcwd()
   
-  switches = ww3_switch_config.switch
+  f = open(pwd+'/ww3_switch.config')
+  switches = oyaml.load(f)
+
   
   f = open(pwd+'/switch','w')
   
