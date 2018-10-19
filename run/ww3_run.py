@@ -3,6 +3,7 @@ import calendar
 import pprint
 import submission_script
 import os
+import glob
 import sys
 sys.dont_write_bytcode = True
 import yaml
@@ -64,34 +65,54 @@ if __name__ == '__main__':
 
   pwd = os.getcwd()
  
+  # Read configuration file
   f = open(pwd+'/ww3_run.config')
   cfg = yaml.load(f)
   pprint.pprint(cfg)
 
-
+  # Create ww3_grid.inp and run ww3_grid
   run_grid = 'y'
   if os.path.exists(pwd+'/mod_def.ww3'):
     run_grid = raw_input('mod_def.ww3 file exists, run ww3_grid? ')
   if run_grid == 'y':
     subprocess.call(['python','ww3_grid.py'])
     subprocess.call([pwd+'/ww3_grid'])
-
+  
+  # Create ww3_strt.inp and run ww3_strt
   run_strt = 'y'
   if os.path.exists(pwd+'/restart.ww3'):
     run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
   if run_strt == 'y':
     subprocess.call(['python','ww3_strt.py'])
-    subprocess.call([pwd+'/ww3_strt.py'])
+    subprocess.call([pwd+'/ww3_strt'])
 
+  # Create ww3_prnc.inp, link correct wind file, and run ww3_prnc
   run_prnc = 'y'
   if os.path.exists(pwd+'/wind.ww3'):
     run_prnc = raw_input('wind.ww3 file exists, run ww3_prnc? ')
   if run_prnc == 'y':
     subprocess.call(['python','ww3_prnc.py'])
     month_name = calendar.month_name[cfg["month"]].lower()
-    subprocess.call(['ln','-s',wind_direc+month_name,'wind.nc'])
+    direc = cfg["wind_direc"]+month_name+'/'
+    ncfile = glob.glob(direc+'*ww3.nc')[0]
+    subprocess.call(['ln','-sf',ncfile,'wind.nc'])
     subprocess.call([pwd+'/ww3_prnc'])
 
+  # Create ww3_shel.inp file, first updating the start/end times in ww3_shel.config
+  gen_shel = 'y'
+  if os.path.exists(pwd+'/ww3_shel.inp'):
+    gen_shel = raw_input('ww3_shel.inp file exists, run ww3_shel.py?')
+  if gen_shel == 'y':
+    lines = open(pwd+'/ww3_shel.config').read().splitlines()
+    for i,line in enumerate(lines):
+      if line and line.split()[0] == 'start_time':
+         lines[i] = "start_time     : '"+str(cfg["year"])+str(cfg["month"]).zfill(2)+"01 000000'"
+      if line and line.split()[0] == 'end_time':
+         lines[i] = "end_time       : '"+str(cfg["year"])+str(cfg["month"]+1).zfill(2)+"01 000000'"
+    f = open(pwd+'/ww3_shel.config','w')
+    f.write('\n'.join(lines))
+    f.close()
+    subprocess.call(['python','ww3_shel.py'])
 
 
   date_range,restart_interval = get_date_ranges(cfg["year"],cfg["month"],cfg["days_per_run"])
@@ -137,18 +158,18 @@ if __name__ == '__main__':
                                               post_cmds=post_cmds)
 
 
-#    # Submit the runs with depenencies
-#    if os.path.isfile(pwd+'/'+cfg['exe']):
-#      if i > 0:
-#        run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
-#      else:
-#        run_cmd = ['sbatch',sub_file]
-#
-#      print ' '.join(run_cmd)
-#      output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
-#      print output
-#
-#      job_id = output.split()[-1]
+    # Submit the runs with depenencies
+    if os.path.isfile(pwd+'/'+cfg['exe']):
+      if i > 0:
+        run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
+      else:
+        run_cmd = ['sbatch',sub_file]
+
+      print ' '.join(run_cmd)
+      output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
+      print output
+
+      job_id = output.split()[-1]
 
     
     #-------------------------------------------------------------------------------
