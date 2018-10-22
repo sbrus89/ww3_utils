@@ -7,19 +7,22 @@ import glob
 import pprint
 import datetime
 import os
+import yaml
+import pprint
 from mpl_toolkits.basemap import Basemap
 plt.switch_backend('agg')
 
 pwd = os.getcwd()
 
-year = '2005'
-model_direcs = {'glo_30m':pwd+'/model_data/',
-                'glo_15m':'/users/sbrus/scratch4/WW3_testing/glo_15m/post_processing/june/model_data/'}
-obs_direc = pwd+'/obs_data/'
+
+f = open(pwd+'/plot_points.config')
+cfg = yaml.load(f)
+pprint.pprint(cfg)
+
 
 runs = {}
-for run in model_direcs:
-  direc = model_direcs[run]
+for run in cfg['model_direcs']:
+  direc = cfg['model_direcs'][run]
   wav_files = sorted(glob.glob(direc+'ww3*.nc'))
   wnd_files = sorted(glob.glob(direc+'cfsr*.nc'))
   runs[run] = [wav_files,wnd_files]
@@ -116,7 +119,7 @@ for i,sta in enumerate(station_list):
     obs_data[var] = []  
 
   # Get data from observation file at output times
-  obs_file = obs_direc+sta+'_'+year+'.txt'
+  obs_file = cfg['obs_direc']+sta+'_'+cfg['year']+'.txt'
   if os.path.isfile(obs_file):
     f = open(obs_file)
     obs = f.read().splitlines()
