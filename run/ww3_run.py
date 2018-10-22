@@ -8,10 +8,11 @@ import sys
 sys.dont_write_bytcode = True
 import yaml
 import pprint
+import argparse
+import time
 
 
 
-test = False 
 
 def get_date_ranges(year,month,days_per_run):
 
@@ -62,6 +63,11 @@ def get_date_ranges(year,month,days_per_run):
 #####################################################################################################
 
 if __name__ == '__main__':
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--submit', action='store_true', help='submit the jobs with dependencies')
+  parser.add_argument('--test'  , action='store_true', help='write out test files to test restart setup')
+  args = parser.parse_args()
 
   pwd = os.getcwd()
  
@@ -159,22 +165,24 @@ if __name__ == '__main__':
 
 
     # Submit the runs with depenencies
-    if os.path.isfile(pwd+'/'+cfg['exe']):
-      if i > 0:
-        run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
-      else:
-        run_cmd = ['sbatch',sub_file]
-
-      print ' '.join(run_cmd)
-      output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
-      print output
-
-      job_id = output.split()[-1]
-
+    if args.submit:
+      if os.path.isfile(pwd+'/'+cfg['exe']):
+        if i > 0:
+          run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
+        else:
+          run_cmd = ['sbatch',sub_file]
+  
+        print ' '.join(run_cmd)
+        output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
+        print output
+  
+        job_id = output.split()[-1]
+        
+        time.sleep(3)
     
     #-------------------------------------------------------------------------------
     # Run test on dummy files
-    if test:
+    if args.test:
       if len(pre_cmds) > 0:
         subprocess.call(pre_cmds[0],shell=True)
 
