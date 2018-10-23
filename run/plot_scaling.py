@@ -1,12 +1,14 @@
 import glob
+import collections
 import matplotlib.pyplot as plt
 import numpy as np
 plt.switch_backend('agg')
 
 
-runs ={'glo_15m':'/users/sbrus/scratch4/WW3_timing/glo_15m/',
-       'glo_30m':'/users/sbrus/scratch4/WW3_timing/glo_30m/',
-       'glo_1d' :'/users/sbrus/scratch4/WW3_timing/glo_1d/'}
+runs = collections.OrderedDict()
+runs['glo_15m']='/users/sbrus/scratch4/WW3_timing/glo_15m/'
+runs['glo_30m']='/users/sbrus/scratch4/WW3_timing/glo_30m/'
+runs['glo_1d'] ='/users/sbrus/scratch4/WW3_timing/glo_1d/'
 
 
 ##################################################################
