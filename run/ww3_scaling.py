@@ -3,7 +3,7 @@ import subprocess
 import submission_script
 import os
 
-pes = [36,72,144,288,576,1152,2304]
+pes = [36,72,144,288,576,1152,1800]
 time = 4.0
 
 if __name__ == '__main__':
