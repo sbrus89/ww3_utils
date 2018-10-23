@@ -1,10 +1,15 @@
 import glob
+import collections
 import matplotlib.pyplot as plt
 import numpy as np
 plt.switch_backend('agg')
 
 
-runs ={'glo_30m':'/users/sbrus/scratch4/WW3_timing/glo_30m/'}
+runs = collections.OrderedDict()
+runs['glo_15m']='/users/sbrus/scratch4/WW3_timing/glo_15m/'
+runs['glo_30m']='/users/sbrus/scratch4/WW3_timing/glo_30m/'
+runs['glo_1d'] ='/users/sbrus/scratch4/WW3_timing/glo_1d/'
+
 
 ##################################################################
 ##################################################################
@@ -55,8 +60,10 @@ if __name__ == '__main__':
           for f in ofiles:
               init, elapsed = get_timing_information(f)        
               wct = elapsed - init
+              print wct
               wct_avg  = wct_avg  + wct 
           wct_avg  = wct_avg /float(len(ofiles))
+          print "average: ", wct_avg
 
           # Add result to the data structure
           data[run]['wct'].append(wct_avg)

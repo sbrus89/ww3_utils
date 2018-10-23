@@ -1,13 +1,10 @@
 import subprocess
 import os
 import glob
+import yaml
+import pprint
 
 pwd = os.getcwd()
-
-# Set directories
-run_direc = '/lustre/scratch4/turquoise/sbrus/WW3_testing/glo_30m/' 
-output_direc = pwd+'/model_output/' 
-data_direc = pwd+'/model_data'
 
 # Output type options
 out_types = [{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
@@ -46,16 +43,20 @@ def replace_ww3_ounp_inp_line(nline,opt1,opt2=None):
 
 if __name__ == '__main__':
 
+  f = open(pwd+'/process_points.config')
+  cfg = yaml.load(f)
+  pprint.pprint(cfg)
+
   # Check if the ww3_ounp input file exists
   if not os.path.isfile(pwd+'/ww3_ounp.inp'):
     print 'ww3_ounp.inp not found'
     raise SystemExit(0)
   
   # Link the mod_def.ww3 file to the current directory
-  subprocess.call(['ln','-sf',run_direc+'mod_def.ww3',pwd])
+  subprocess.call(['ln','-sf',cfg['run_direc']+'mod_def.ww3',pwd])
   
   # Loop over all out_pnt.ww3.YYYYMMDD_HHMMSS-YYMMDD_HHMMSS files
-  pnt_files = sorted(glob.glob(output_direc+'out_pnt.ww3.*'))
+  pnt_files = sorted(glob.glob(cfg['output_direc']+'out_pnt.ww3.*'))
   for f in pnt_files:
   
     # Link the out_pnt.ww3 file to the current directory
@@ -82,6 +83,6 @@ if __name__ == '__main__':
       subprocess.call(['srun','-n','4',pwd+'/ww3_ounp'])
   
   # Move file to data directory
-  if not os.path.exists(data_direc):
-    subprocess.call(['mkdir',data_direc])
-  subprocess.call('mv *.nc '+data_direc,shell=True)
+  if not os.path.exists(cfg['data_direc']):
+    subprocess.call(['mkdir',cfg['data_direc']])
+  subprocess.call('mv *.nc '+cfg['data_direc'],shell=True)
