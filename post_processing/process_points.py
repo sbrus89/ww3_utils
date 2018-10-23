@@ -84,5 +84,5 @@ if __name__ == '__main__':
   
   # Move file to data directory
   if not os.path.exists(cfg['data_direc']):
-    subprocess.call(['mkdir',cfg['data_direc']])
+    subprocess.call(['mkdir','-p',cfg['data_direc']])
   subprocess.call('mv *.nc '+cfg['data_direc'],shell=True)

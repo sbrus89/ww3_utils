@@ -9,6 +9,7 @@ import datetime
 import os
 import yaml
 import pprint
+import subprocess
 from mpl_toolkits.basemap import Basemap
 plt.switch_backend('agg')
 
@@ -23,8 +24,8 @@ pprint.pprint(cfg)
 runs = {}
 for run in cfg['model_direcs']:
   direc = cfg['model_direcs'][run]
-  wav_files = sorted(glob.glob(direc+'ww3*.nc'))
-  wnd_files = sorted(glob.glob(direc+'cfsr*.nc'))
+  wav_files = sorted(glob.glob(direc+'ww3*_tab.nc'))
+  wnd_files = sorted(glob.glob(direc+'cfsr*_tab.nc'))
   runs[run] = [wav_files,wnd_files]
 
 #--------------------------
@@ -205,4 +206,6 @@ for i,sta in enumerate(station_list):
     fig.savefig(sta+'_'+var+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
     plt.close()
 
-
+if not os.path.exists(cfg["plot_direc"]):
+  subprocess.call(['mkdir','-p',cfg["plot_direc"]])
+subprocess.call('mv *.png '+cfg["plot_direc"],shell=True)
