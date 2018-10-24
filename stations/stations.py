@@ -27,7 +27,7 @@ nsta = 0
 for i,sta in enumerate(root):
 
     # Get station attribute data
-    ID = "'"+sta.attrib['id']+"'"
+    ID = "'"+sta.attrib['id'].lower()+"'"
     owner = sta.attrib['owner']
     prgm = sta.attrib['pgm']      
     #print i+1, ID, prgm
@@ -71,46 +71,52 @@ for i,sta in enumerate(root):
           moved = True
       if moved == True:
         stations[ID]['moved'] = True
-        
 
-n = 0
-for sta in stations:
-  if stations[sta]['moved'] == True:
-    n = n + 1
-    pprint.pprint(stations[sta])
-print n    
+        
+## Print stations that have moved
+#n = 0
+#for sta in stations:
+#  if stations[sta]['moved'] == True:
+#    n = n + 1
+#    pprint.pprint(stations[sta])
+#print n    
 
 #pprint.pprint(stations)
 #print len(stations)
 
 
+# Download station data and write to station list file
 f = open(pwd+'/stations.txt','w')
 for sta in stations:
  
-
+      # Skip if station has moved
       if stations[sta]['moved'] == True:
         continue
 
+      # Get station information
       owner = stations[sta]['owner']
       prgm = stations[sta]['prgm']
       lon = stations[sta]['history'][0]['lon']
       lat = stations[sta]['history'][0]['lat']
+      ID = sta.strip("'")
 
+      # Download data
       success = False
       try:
-        print 'downloading '+sta
-        url = 'https://www.ndbc.noaa.gov/view_text_file.php?fileID='+sta+'h'+year+'.txt.gz&dir=data/historical/stdmet/'
+        print 'downloading '+ID
+        url = 'https://www.ndbc.noaa.gov/view_text_file.php?filename='+ID+'h'+year+'.txt.gz&dir=data/historical/stdmet/'
         data = urllib2.urlopen(url).read().splitlines()
         success = True
       except:
         print '  error downloading data'
 
+      # Write to file
       if success:
         print data[0]
         if data[0].find('YYYY MM DD hh mm') >= 0:
 
           # Save station data file
-          fd = open(sta.attrib['ID']+'_'+year+'.txt','w')
+          fd = open(ID+'_'+year+'.txt','w')
           fd.write('\n'.join(data))
           fd.close()
 
