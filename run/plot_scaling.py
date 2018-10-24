@@ -6,9 +6,9 @@ plt.switch_backend('agg')
 
 
 runs = collections.OrderedDict()
-runs['glo_15m']='/users/sbrus/scratch4/WW3_timing/glo_15m/'
-runs['glo_30m']='/users/sbrus/scratch4/WW3_timing/glo_30m/'
-runs['glo_1d'] ='/users/sbrus/scratch4/WW3_timing/glo_1d/'
+runs['1/4 degree']='/users/sbrus/scratch4/WW3_timing/glo_15m/'
+runs['1/2 degree']='/users/sbrus/scratch4/WW3_timing/glo_30m/'
+runs['1 degree'] ='/users/sbrus/scratch4/WW3_timing/glo_1d/'
 
 
 ##################################################################
@@ -30,6 +30,29 @@ def get_timing_information(ofile):
   else:
     print 'Timing information not found in screen output file'
     raise SystemExit(0)
+
+##################################################################
+##################################################################
+
+def plot_data(xdata,ydata,plot_type,xlabel,ylabel,filename):
+
+  plt.figure()
+  lines = []
+  labels = []
+  for run in xdata: 
+    if plot_type == 'loglog':
+      l, = plt.loglog(xdata[run],ydata[run],'-o')
+    elif plot_type == 'semilogx':
+      l, = plt.semilogx(xdata[run],ydata[run],'-o')
+    lines.append(l)
+    labels.append(run)
+  plt.xlabel(xlabel)
+  plt.ylabel(ylabel)
+  plt.legend(lines,labels)
+  plt.tight_layout()
+  plt.savefig(filename,bbox_inches='tight')
+  plt.close()
+      
 
 ##################################################################
 ##################################################################
@@ -76,19 +99,40 @@ if __name__ == '__main__':
       data[run]['np'] = data[run]['np'][ind]
       data[run]['wct']= data[run]['wct'][ind]   
 
-  # Plot data for each run
-  plt.figure()
-  lines = []
-  labels = []
+  # Plot scaling curve for each run
+  x = collections.OrderedDict()
+  y = collections.OrderedDict()
   for run in runs:
-    l, = plt.loglog(data[run]['np'],data[run]['wct'],'-o')
-    lines.append(l)
-    labels.append(run)
-  plt.xlabel('number of processors')
-  plt.ylabel('time (s)')
-  plt.legend(lines,labels)
-  plt.tight_layout()
-  plt.savefig('wct.png',bbox_inches='tight')
-  plt.close()
-      
-    
+    x[run] = data[run]['np']
+    y[run] = data[run]['wct']
+  plot_data(x,y,'loglog','number of processors','wall clock time (s)','wct.png')
+
+  # Plot speedup for each run
+  x = collections.OrderedDict()
+  y = collections.OrderedDict()
+  for run in runs:
+    n = len(data[run]['np'])-1
+    x[run] = np.zeros(n)
+    y[run] = np.zeros(n)
+    for i in range(n):
+      x[run][i] = data[run]['np'][i+1]
+      y[run][i] = data[run]['wct'][i]/data[run]['wct'][i+1]
+  plot_data(x,y,'semilogx','number of processors','parallel speedpup','parallel_speedup.png') 
+
+  # Plot speedup over high res case
+  x = collections.OrderedDict()
+  y = collections.OrderedDict()
+  high_res = '1/4 degree'
+  for run in runs:
+    if run != high_res:
+      x[run] = data[run]['np']
+      y[run] = np.divide(data[high_res]['wct'],data[run]['wct'])
+  plot_data(x,y,'semilogx','number of processors','speedup over '+high_res,'resolution_speedup.png')
+
+  # Plot simulated years/day
+  x = collections.OrderedDict()
+  y = collections.OrderedDict()
+  for run in runs:
+    x[run] = data[run]['np']
+    y[run] = (3600.0*24.0)/(data[run]['wct']*365.0)
+  plot_data(x,y,'semilogx','number of processors','simulated years per day (estimated)','sim_yrs_per_day.png')
