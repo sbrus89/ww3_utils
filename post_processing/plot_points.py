@@ -13,6 +13,87 @@ import subprocess
 from mpl_toolkits.basemap import Basemap
 plt.switch_backend('agg')
 
+################################################################################################
+################################################################################################
+
+def read_point_files(data_files,variables):
+
+  for j,files in enumerate(data_files):
+    for i,name in enumerate(files):
+      print name.split('/')[-1]
+    
+      nc_file = netCDF4.Dataset(name,'r')
+    
+      # Initializations for first iteration of run
+      if j == 0 and i == 0:
+          # Station information
+          stations = {}
+          stations['name'] = netCDF4.chartostring(nc_file.variables['station_name'][:,:]).tolist()
+          stations['lon'] = np.squeeze(nc_file.variables['longitude'][:])
+          stations['lat'] = np.squeeze(nc_file.variables['latitude'][:])
+          nstations = len(stations['name'])
+  
+          # Model output data (nfiles = number of timesnaps, 1 timesnap per file)
+          nfiles = len(files)
+          data = {}
+          for var in variables:
+            data[var] = np.empty((nfiles,nstations))
+    
+          # Time information
+          output_time = np.empty(nfiles)
+          ref_date = nc_file.variables['time'].getncattr('units').replace('days since ','')
+          ref_date = datetime.datetime.strptime(ref_date,'%Y-%m-%d %H:%M:%S')
+      
+      # Get time and output variables
+      if j == 0:
+        output_time[i] = nc_file.variables['time'][:]
+      for var in variables:
+        if var in nc_file.variables:
+          data[var][i][:] = nc_file.variables[var][:]
+
+  return data, stations, output_time, ref_date
+
+################################################################################################
+################################################################################################
+
+def read_station_data(obs_file,output_date,variables):
+
+  # Initialize variable for observation data
+  obs_data = {}
+  for var in variables:
+    obs_data[var] = []  
+
+  # Get data from observation file at output times
+  f = open(obs_file)
+  obs = f.read().splitlines()
+  nlines = len(obs)
+  lines_searched = 0
+  for t in output_date:
+    found = False
+    for j in range(lines_searched,nlines):
+      if obs[j].find(t) >= 0:
+        for var in variables:
+          col = variables[var]['obs_col']
+          obs_data[var].append(obs[j].split()[col])
+        lines_searched = j+1
+        found = True
+        break
+    if found == False:
+      for var in variables:
+        obs_data[var].append('999.0')
+
+  # Convert observation data and replace fill values with nan
+  for var in variables:
+    obs_data[var] = np.asarray(obs_data[var])
+    obs_data[var] = obs_data[var].astype(np.float)
+    fill_val = variables[var]['fill_val']
+    obs_data[var][obs_data[var] >= fill_val] = np.nan
+
+  return obs_data
+
+################################################################################################
+################################################################################################
+
 pwd = os.getcwd()
 
 
@@ -60,39 +141,7 @@ data = {}
 stations = {}
 for k,run in enumerate(runs):
   data_files = runs[run]
-  for j,files in enumerate(data_files):
-    for i,name in enumerate(files):
-      print name.split('/')[-1]
-    
-      nc_file = netCDF4.Dataset(name,'r')
-    
-      # Initializations for first iteration of run
-      if j == 0 and i == 0:
-          # Station information
-          stations[run] = {}
-          stations[run]['name'] = netCDF4.chartostring(nc_file.variables['station_name'][:,:]).tolist()
-          stations[run]['lon'] = np.squeeze(nc_file.variables['longitude'][:])
-          stations[run]['lat'] = np.squeeze(nc_file.variables['latitude'][:])
-          nstations = len(stations[run]['name'])
-  
-          # Model output data (nfiles = number of timesnaps, 1 timesnap per file)
-          nfiles = len(files)
-          data[run] = {}
-          for var in variables:
-            data[run][var] = np.empty((nfiles,nstations))
-    
-          # Time information
-          output_time = np.empty(nfiles)
-          ref_date = nc_file.variables['time'].getncattr('units').replace('days since ','')
-          ref_date = datetime.datetime.strptime(ref_date,'%Y-%m-%d %H:%M:%S')
-      
-      # Get time and output variables
-      if j == 0:
-        output_time[i] = nc_file.variables['time'][:]
-      for var in variables:
-        if var in nc_file.variables:
-          data[run][var][i][:] = nc_file.variables[var][:]
-  
+  data[run],stations[run],output_time,ref_date = read_point_files(data_files,variables)  
 
 # Convert output times to date format
 output_date = []
@@ -115,42 +164,11 @@ station_list = list(set(station_list))
 for i,sta in enumerate(station_list):
   print sta
 
-  # Initialize variable for observation data
-  obs_data = {}
-  for var in variables:
-    obs_data[var] = []  
 
   # Get data from observation file at output times
   obs_file = cfg['obs_direc']+sta+'_'+cfg['year']+'.txt'
   if os.path.isfile(obs_file):
-    f = open(obs_file)
-    obs = f.read().splitlines()
-    nlines = len(obs)
-    lines_searched = 0
-    for t in output_date:
-      found = False
-      for j in range(lines_searched,nlines):
-        if obs[j].find(t) >= 0:
-          for var in variables:
-            col = variables[var]['obs_col']
-            obs_data[var].append(obs[j].split()[col])
-          lines_searched = j+1
-          found = True
-          break
-      if found == False:
-        for var in variables:
-          obs_data[var].append('999.0')
-
-    # Convert observation data and replace fill values with nan
-    for var in variables:
-      obs_data[var] = np.asarray(obs_data[var])
-      obs_data[var] = obs_data[var].astype(np.float)
-      plot_obs_data = False
-      fill_val = variables[var]['fill_val']
-      if np.amin(obs_data[var]) < fill_val: 
-        plot_obs_data = True
-      obs_data[var][obs_data[var] >= fill_val] = np.nan
-
+    obs_data = read_station_data(obs_file,output_date,variables)
       
     # Create figure 
     fig = plt.figure(figsize=[6,12])
@@ -184,8 +202,10 @@ for i,sta in enumerate(station_list):
     plot_flag = True
     for run in data:
       for var in variables:
-        if len(np.unique(data[run][var][:,ind])) == 1:
-          plot_flag = False
+        if sta in stations[run]['name']:
+          ind = stations[run]['name'].index(sta)
+          if len(np.unique(data[run][var][:,ind])) == 1:
+            plot_flag = False
 
     if plot_flag == False:
 
