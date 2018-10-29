@@ -27,7 +27,7 @@ files = sorted(glob.glob(pwd+'*.nc'))
 first_file  = files[0].split('/')[-1] 
 second_file = files[1].split('/')[-1]
 
-if files[0].find('ocn') >= 0:
+if files[0].find('ocnu') >= 0 or files[0].find('ocnv') >= 0:
   print 'Appending files...'  
   fileA = files[0].split('/')[-1]
   fileB = files[2].split('/')[-1]
