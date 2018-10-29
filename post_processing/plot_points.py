@@ -101,6 +101,7 @@ for t in output_time:
   date = ref_date + datetime.timedelta(days=t)
   output_date.append(date.strftime('%Y %m %d %H %M'))
   output_datetime.append(date)
+output_datetime = np.asarray(output_datetime,dtype='O')
 
 #-------------------------------------------------
 # Read observation data and plot for each station
@@ -150,6 +151,7 @@ for i,sta in enumerate(station_list):
         plot_obs_data = True
       obs_data[var][obs_data[var] >= fill_val] = np.nan
 
+      
     # Create figure 
     fig = plt.figure(figsize=[6,12])
     gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
@@ -178,33 +180,51 @@ for i,sta in enumerate(station_list):
     m.drawcoastlines()
     ax.plot(lon,lat,'ro')
 
-    # Plot modeled and observed data timeseries
-    for k,var in enumerate(variables):
-      print '  '+var
-      lines = []
-      labels = []
-      ax = fig.add_subplot(gs[k+1,:])
-      l1, = ax.plot(output_datetime,obs_data[var])
-      lines.append(l1)
-      labels.append('Observed')
-      for run in data:
-        if sta in stations[run]['name']:
-          ind = stations[run]['name'].index(sta)
-          if variables[var]['recip'] == True:
-            data[run][var][:,ind] = 1.0/data[run][var][:,ind]
-          l2, = ax.plot(output_datetime,data[run][var][:,ind])
-          lines.append(l2)
-          labels.append(run)
-      ax.set_title(variables[var]['label'])
-      ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-      #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
-      ax.set_xlabel('time')
-      ax.set_ylabel(var)
-    lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
-    st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
-    fig.tight_layout()
-    fig.savefig(sta+'_'+var+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
-    plt.close()
+    # Determine if model data is not available, i.e. values are all the same  (this causes issues with the plot axis)    
+    plot_flag = True
+    for run in data:
+      for var in variables:
+        if len(np.unique(data[run][var][:,ind])) == 1:
+          plot_flag = False
+
+    if plot_flag == False:
+
+      print "  model data not availiable"
+      st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
+      fig.tight_layout()
+      fig.savefig(sta+'.png',bbox_inches='tight')
+      plt.close()
+      continue
+
+    else:
+
+      # Plot modeled and observed data timeseries
+      for k,var in enumerate(variables):
+        print '  '+var
+        lines = []
+        labels = []
+        ax = fig.add_subplot(gs[k+1,:])
+        l1, = ax.plot(output_datetime,obs_data[var])
+        lines.append(l1)
+        labels.append('Observed')
+        for run in data:
+          if sta in stations[run]['name']:
+            ind = stations[run]['name'].index(sta)
+            if variables[var]['recip'] == True:
+              data[run][var][:,ind] = 1.0/data[run][var][:,ind]
+            l2, = ax.plot(output_datetime,data[run][var][:,ind])
+            lines.append(l2)
+            labels.append(run)
+        ax.set_title(variables[var]['label'])
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+        ax.set_xlabel('time')
+        ax.set_ylabel(var)
+      lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
+      st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
+      fig.tight_layout()
+      fig.savefig(sta+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
+      plt.close()
 
 if not os.path.exists(cfg["plot_direc"]):
   subprocess.call(['mkdir','-p',cfg["plot_direc"]])
