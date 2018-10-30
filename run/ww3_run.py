@@ -46,7 +46,7 @@ def get_date_ranges(year,month,days_per_run):
                        str(year)+month2+date2 + ' 000000'])
     restart_interval.append(date_range_end-date_range_start)
   
-    # Update for next iteration
+   # Update for next iteration
     date_range_start = date_range_end
   
   
@@ -76,6 +76,7 @@ if __name__ == '__main__':
   cfg = yaml.load(f)
   pprint.pprint(cfg)
 
+
   # Create ww3_grid.inp and run ww3_grid
   run_grid = 'y'
   if os.path.exists(pwd+'/mod_def.ww3'):
@@ -92,17 +93,51 @@ if __name__ == '__main__':
     subprocess.call(['python','ww3_strt.py'])
     subprocess.call([pwd+'/ww3_strt'])
 
-  # Create ww3_prnc.inp, link correct wind file, and run ww3_prnc
-  run_prnc = 'y'
-  if os.path.exists(pwd+'/wind.ww3'):
-    run_prnc = raw_input('wind.ww3 file exists, run ww3_prnc? ')
-  if run_prnc == 'y':
-    subprocess.call(['python','ww3_prnc.py'])
-    month_name = calendar.month_name[cfg["month"]].lower()
-    direc = cfg["wind_direc"]+month_name+'/'
-    ncfile = glob.glob(direc+'*ww3.nc')[0]
-    subprocess.call(['ln','-sf',ncfile,'wind.nc'])
-    subprocess.call([pwd+'/ww3_prnc'])
+  # Set forcings to default vaules if not present in config file
+  if 'wind' not in cfg:
+    cfg['wind'] = 'T'        # Always use wind forcing
+  else:
+    cfg['wind'] = 'T'
+  if 'currents' not in cfg:  # Turn others off if not specified
+    cfg['currents'] = 'F'
+  if 'ssh' not in cfg:
+    cfg['ssh'] = 'F'
+
+  # Determine which forcings are requested
+  forcings = []
+  if cfg['wind'] == 'T':
+    forcings.append('wind')
+  if cfg['currents'] == 'T':
+    forcings.append('currents')
+  if cfg['ssh'] == 'T':
+    forcings.append('ssh')
+   
+  ww3_files = {'wind':'wind.ww3','currents':'current.ww3','ssh':'level.ww3'}
+
+  # Create ww3_prnc.inp, link correct data file, and run ww3_prnc
+  for forcing in forcings:
+    if cfg[forcing] == 'T':
+      run_prnc = 'y'
+      if os.path.exists(pwd+'/'+ww3_files[forcing]):
+        run_prnc = raw_input(forcing+'.ww3 file exists, run ww3_prnc? ')
+      if run_prnc == 'y':
+ 
+        # if only one forcing is requested don't require the config file to be named with a '.forcing' extension
+        # otherwise, copy the file with the '.forcing' file without the extension so ww3_prnc.py can read it (delete it later)
+        if len(forcings) == 1 and  os.path.exists('ww3_prnc.config'):
+          rm_config = False 
+        else:
+          subprocess.call(['cp','ww3_prnc.config.'+forcing,'ww3_prnc.config'])
+          rm_config = True
+
+        subprocess.call(['python','ww3_prnc.py'])
+        month_name = calendar.month_name[cfg["month"]].lower()
+        direc = cfg[forcing+"_direc"]+month_name+'/'
+        ncfile = glob.glob(direc+'*ww3.nc')[0]
+        subprocess.call(['ln','-sf',ncfile,forcing+'.nc'])
+        subprocess.call([pwd+'/ww3_prnc'])
+        if rm_config:
+          subprocess.call(['rm','ww3_prnc.config'])     
 
   # Create ww3_shel.inp file, first updating the start/end times in ww3_shel.config
   gen_shel = 'y'
