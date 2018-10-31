@@ -202,13 +202,20 @@ if __name__ == '__main__':
       ax.plot(lon,lat,'ro')
   
       # Determine if model data is not available, i.e. values are all the same  (this causes issues with the plot axis)    
-      plot_flag = True
+      count = 0
       for run in data:
+        flag = False
         for var in variables:
           if sta in stations[run]['name']:
             ind = stations[run]['name'].index(sta)
             if len(np.unique(data[run][var][:,ind])) == 1:
-              plot_flag = False
+              flag = True
+        if flag == True:
+          count = count + 1
+
+      plot_flag = True
+      if count == len(data):
+        plot_flag = False
   
       if plot_flag == False:
   
