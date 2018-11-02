@@ -9,7 +9,7 @@ import datetime
 import numpy as np
 import os
 
-direc = '/users/sbrus/scratch4/WW3_testing/glo_30m/post_processing/june/model_data/points/'
+direc = '/users/sbrus/scratch4/WW3_testing/glo_30m/post_processing/june-august/model_data/points/'
 obs_direc = './obs_data/'
 wav_files = [sorted(glob.glob(direc+'ww3*_tab.nc'))]
 variables = plot_points.variables
@@ -30,12 +30,14 @@ output_datetime = np.asarray(output_datetime,dtype='O')
 
 # Initialize plot
 fig = plt.figure(figsize=[12,12])
-m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
-                             llcrnrlon=-180,urcrnrlon=180,resolution='c')
+m = Basemap(projection='cyl',llcrnrlat=-90,urcrnrlat=90,\
+                             llcrnrlon=-180,urcrnrlon=-30,resolution='c')
 m.fillcontinents(color='tan',lake_color='lightblue')
 m.drawcoastlines()
-cmap = cm.RdYlGn
-norm = colors.Normalize(vmin=0.0,vmax=1.0)
+#m.drawparallels(np.arange(-90,90,20),labels=[False,True,True,False])
+#m.drawmeridians(np.arange(-180,180,20),labels=[True,False,False,True])
+cmap = cm.RdYlGn_r
+norm = colors.Normalize(vmin=0.0,vmax=100)
 
 
 xv = []
@@ -65,17 +67,20 @@ for sta in sorted(stations['name']):
       if len(idx) > 1:
 
         # Calculate regression coeffieint
-        slope,b,r,p,err = stats.linregress(x,y)
-        r2 = r**2
-        print r2
+#        slope,b,r,p,err = stats.linregress(x,y)
+#        r2 = r**2
+#        print r2
+
+        r2 = np.mean(np.absolute(np.divide(y-x,y)))*100.0
 
         xv.append(lon)
         yv.append(lat)
         zv.append(r2)
 
 colors = [cmap(norm(val)) for val in zv]
-sc = m.scatter(xv,yv,c=zv,marker='o',cmap=cmap,zorder=10)
+sc = m.scatter(xv,yv,c=zv,marker='o',cmap=cmap,zorder=10,vmin=0.0,vmax=100.0)
 cbar = plt.colorbar(sc,orientation='horizontal')
-cbar.set_label('r squared value')
-         
+#cbar.set_label('r squared value')
+cbar.set_label('Mean absolute percentage error')
+fig.tight_layout()
 fig.savefig('map.png',bbox_inches='tight',dpi=400)    
