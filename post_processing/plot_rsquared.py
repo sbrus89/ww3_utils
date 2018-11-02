@@ -105,7 +105,7 @@ labels = []
 fig = plt.figure(figsize=[24,4])
 ax = fig.add_subplot(111)
 ax2 = ax.twinx()
-ax2.plot(xv,station_depth_data,color='silver')
+dp, = ax2.plot(xv,station_depth_data,color='silver')
 
 for run in direc:
 
@@ -146,11 +146,13 @@ for run in direc:
   scatters.append(sc)
   labels.append(run)
 
+scatters.append(dp)
+labels.append('Depth at station')
 lgd = plt.legend(scatters,labels,loc=2)
 ax.set_xticks(xv)
 ax.set_xticklabels(station_list_data,rotation='vertical')      
 ax.set_xlabel('Station ID')
 #ax.set_ylabel('r-squared')
 ax.set_ylabel('Mean absolute percentage error')
-ax2.set_ylabel('depth (m)')
+ax2.set_ylabel('Depth (m)')
 fig.savefig('rsquared.png',bbox_inches='tight',dpi=400)    
