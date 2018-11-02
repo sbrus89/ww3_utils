@@ -10,12 +10,13 @@ import datetime
 import numpy as np
 import os
 import netCDF4 as nc4
+from collections import OrderedDict
 
-direc = {
-         'glo_15m':'/users/sbrus/scratch4/WW3_testing/glo_15m/post_processing/june/model_data/points/',
-         'glo_30m':'/users/sbrus/scratch4/WW3_testing/glo_30m/post_processing/june/model_data/points/',
-         'glo_1d':'/users/sbrus/scratch4/WW3_testing/glo_1d/post_processing/june/model_data/points/'
-        }
+direc = OrderedDict()
+direc['1/2 degree'] = '/users/sbrus/scratch4/WW3_testing/glo_30m/post_processing/june-august/model_data/points/'
+direc['1 degree']   = '/users/sbrus/scratch4/WW3_testing/glo_1d/post_processing/june-august/model_data/points/'
+direc['2 degree']   = '/users/sbrus/scratch4/WW3_testing/glo_2d/post_processing/june-august/model_data/points/'
+
 obs_direc = './obs_data/'
 variables = plot_points.variables
 variable = 'hs'
@@ -89,22 +90,24 @@ for sta in station_list:
     if len(idx) > 1:
       station_list_data.append(sta)
       ind = station_list.index(sta)
-      station_depth_data.append(station_depth[ind])
+      station_depth_data.append(station_depth[ind][0])
 
-
-
-
-fig = plt.figure(figsize=[24,4])
-ax = fig.add_subplot(111)
 
 nsta = len(station_list_data)
 for i in range(nsta):
   print station_list_data[i],station_depth_data[i]
 
+
 xv = np.arange(nsta)
 scatters = []
 labels = []	
-for run in stations:
+
+fig = plt.figure(figsize=[24,4])
+ax = fig.add_subplot(111)
+ax2 = ax.twinx()
+ax2.plot(xv,station_depth_data,color='silver')
+
+for run in direc:
 
   yv = np.zeros(nsta)
   yv.fill(np.nan)
@@ -129,21 +132,25 @@ for run in stations:
         if len(idx) > 1:
    
           # Calculate regression coeffieint
-          slope,b,r,p,err = stats.linregress(x,y)
-          r2 = r**2
-          print r2
+#          slope,b,r,p,err = stats.linregress(x,y)
+#          r2 = r**2
+#          print r2
+
+          r2 = np.mean(np.absolute(np.divide(y-x,y)))*100.0
    
           ind = station_list_data.index(sta)
           yv[ind] = r2
     
   
-  sc = ax.scatter(xv,yv,marker='o')
+  sc = ax.scatter(xv,yv,marker='o',zorder=10)
   scatters.append(sc)
   labels.append(run)
-  lgd = plt.legend(scatters,labels,loc=2)
-  ax.set_xticks(xv)
-  ax.set_xticklabels(station_list_data,rotation='vertical')      
-  ax2 = ax.twiny()
-  ax2.set_xticks(xv)
-  ax2.set_xticklabels(station_depth_data,rotation='vertical')
+
+lgd = plt.legend(scatters,labels,loc=2)
+ax.set_xticks(xv)
+ax.set_xticklabels(station_list_data,rotation='vertical')      
+ax.set_xlabel('Station ID')
+#ax.set_ylabel('r-squared')
+ax.set_ylabel('Mean absolute percentage error')
+ax2.set_ylabel('depth (m)')
 fig.savefig('rsquared.png',bbox_inches='tight',dpi=400)    
