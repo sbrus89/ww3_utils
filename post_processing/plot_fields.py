@@ -1,6 +1,6 @@
 import netCDF4 
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 import glob
@@ -12,7 +12,7 @@ import subprocess
 from mpl_toolkits.basemap import Basemap
 plt.switch_backend('agg')
 
-def read_field(f):
+def read_field_ww3(f):
 
   nc_file = netCDF4.Dataset(f,'r')
 
@@ -34,15 +34,38 @@ def read_field(f):
 
   return lon,lat,var,output_date
 
+
+def read_field_e3sm(f):
+
+  nc_file = netCDF4.Dataset(f,'r')
+
+  output_date = f.split('.')[-2] 
+
+  lon  = np.linspace(0.0,360.0,nc_file.dimensions['NX'].size)
+  lat  = np.linspace(-90.0,90.0,nc_file.dimensions['NY'].size)
+
+  var = nc_file.variables['HS'][:,:]
+
+  return lon,lat,var,output_date
+
 ###############################################################################################
 ###############################################################################################
 
 pwd = os.getcwd()
 
+
 # Read in configuration file
 f = open(pwd+'/plot_fields.config')
 cfg = yaml.load(f)
 pprint.pprint(cfg)
+
+# Setup to read either e3sm or ww3 output
+if 'model' in cfg and cfg['model'] == 'e3sm':
+  read_field = read_field_e3sm
+  file_wildcard = '*.ww3.*.nc'
+else:
+  read_field = read_field_ww3
+  file_wildcard = '*.nc'
 
 # Find nc file names
 runs = [x[0] for x in cfg['model_direc']]
@@ -61,7 +84,7 @@ elif nruns == 2:
 
 # Get field output files
 output_direc = cfg['model_direc'][0][1]
-files = sorted(glob.glob(output_direc+'*.nc'))
+files = sorted(glob.glob(output_direc+file_wildcard))
 
 count = 0
 for f in files:
