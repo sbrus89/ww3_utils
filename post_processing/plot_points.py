@@ -11,8 +11,9 @@ import yaml
 import pprint
 import subprocess
 from mpl_toolkits.basemap import Basemap
+from scipy import interpolate
 plt.switch_backend('agg')
-
+np.set_printoptions(threshold=np.nan)
 #--------------------------
 # Define variables to plot
 #--------------------------
@@ -64,47 +65,119 @@ def read_point_files(data_files,variables):
             data[var] = np.empty((nfiles,nstations))
     
           # Time information
-          output_time = np.empty(nfiles)
-          ref_date = nc_file.variables['time'].getncattr('units').replace('days since ','')
-          ref_date = datetime.datetime.strptime(ref_date,'%Y-%m-%d %H:%M:%S')
+          data['time'] = np.empty(nfiles)
+          data['ref_date'] = nc_file.variables['time'].getncattr('units').replace('days since ','')
+          data['ref_date'] = datetime.datetime.strptime(data['ref_date'],'%Y-%m-%d %H:%M:%S')
       
       # Get time and output variables
       if j == 0:
-        output_time[i] = nc_file.variables['time'][:]
+        data['time'][i] = nc_file.variables['time'][:]
       for var in variables:
         if var in nc_file.variables:
           data[var][i][:] = nc_file.variables[var][:]
 
-  return data, stations, output_time, ref_date
+  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
+
+  return data, stations
 
 ################################################################################################
 ################################################################################################
 
-def read_station_data(obs_file,output_date,variables):
+def interpolate_stations_from_fields(data_files,variables,station_file):
+
+  # Read in stations names and location
+  f = open(station_file)
+  lines = f.read().splitlines()
+  stations = {}
+  stations['name'] = []
+  stations['lon'] = []
+  stations['lat'] = []
+  for sta in lines:
+    val = sta.split()
+    stations['name'].append(val[2].strip("'"))
+    stations['lon'].append(float(val[0]))
+    stations['lat'].append(float(val[1]))
+  nstations = len(stations['name'])
+  stations['lon'] = np.asarray(stations['lon'])
+  stations['lat'] = np.asarray(stations['lat'])
+  sta_pts = np.column_stack((stations['lon'],stations['lat']))
+
+
+  for j,files in enumerate(data_files):
+    for i,name in enumerate(files):
+      print name.split('/')[-1]
+
+      nc_file = netCDF4.Dataset(name,'r')
+
+      # Initializations
+      if j == 0 and i == 0:
+        
+          # Model output data
+          nfiles = len(data_files[0])
+          data = {}
+          for var in variables:
+            data[var] = np.zeros((nfiles,nstations))
+            #data[var].fill(np.nan)
+  
+          # Time information
+          data['time'] = np.empty(nfiles)
+          data['ref_date'] = nc_file.variables['time'].getncattr('units').replace('days since ','')
+          data['ref_date'] = datetime.datetime.strptime(data['ref_date'],'%Y-%m-%d %H:%M:%S')
+        
+      # Get field grid points
+      lon = nc_file.variables['longitude'][:]
+      idx = np.where(lon > 180.0)
+      lon[idx] = lon[idx] - 360.0
+      lat = nc_file.variables['latitude'][:]
+      Lon,Lat = np.meshgrid(lon,lat)
+
+      if j == 0:
+        data['time'][i] = nc_file.variables['time'][:]
+      for var in variables:
+        if var in nc_file.variables:
+          print var      
+          # Interpolate station values from field
+          field = nc_file.variables[var][0,:,:]
+          x = Lon[~field.mask]
+          y = Lat[~field.mask]
+          field = field[~field.mask]
+          f = field.ravel()
+          x = x.ravel()
+          y = y.ravel()
+          grid_pts = np.column_stack((x,y))
+          if grid_pts.size > 0:
+            interp = interpolate.LinearNDInterpolator(grid_pts,f)
+            data[var][i][:] = interp(sta_pts)[:]
+
+  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
+
+  return data, stations
+
+################################################################################################
+################################################################################################
+
+def read_station_data(obs_file,min_date,max_date,variables):
+
+  frmt = '%Y %m %d %H %M'
 
   # Initialize variable for observation data
   obs_data = {}
   for var in variables:
     obs_data[var] = []  
+  obs_data['datetime'] = []
 
-  # Get data from observation file at output times
+  # Get data from observation file between min and max output times
   f = open(obs_file)
   obs = f.read().splitlines()
-  nlines = len(obs)
-  lines_searched = 0
-  for t in output_date:
-    found = False
-    for j in range(lines_searched,nlines):
-      if obs[j].find(t) >= 0:
-        for var in variables:
-          col = variables[var]['obs_col']
-          obs_data[var].append(obs[j].split()[col])
-        lines_searched = j+1
-        found = True
-        break
-    if found == False:
+  for line in obs[1:]:
+    date = line[0:16]
+    date_time = datetime.datetime.strptime(date,frmt)
+    if date_time >= datetime.datetime.strptime(min_date,frmt) and \
+       date_time <= datetime.datetime.strptime(max_date,frmt):
+      obs_data['datetime'].append(date_time)
       for var in variables:
-        obs_data[var].append('999.0')
+        col = variables[var]['obs_col']
+        obs_data[var].append(line.split()[col])
 
   # Convert observation data and replace fill values with nan
   for var in variables:
@@ -113,7 +186,25 @@ def read_station_data(obs_file,output_date,variables):
     fill_val = variables[var]['fill_val']
     obs_data[var][obs_data[var] >= fill_val] = np.nan
 
+  obs_data['datetime'] = np.asarray(obs_data['datetime'],dtype='O')
+
   return obs_data
+
+################################################################################################
+################################################################################################
+
+def output_time_to_date(output_time,ref_date):
+
+  # Convert output times to date format
+  output_date = []
+  output_datetime = []
+  for t in output_time:
+    date = ref_date + datetime.timedelta(days=t)
+    output_date.append(date.strftime('%Y %m %d %H %M'))
+    output_datetime.append(date)
+  output_datetime = np.asarray(output_datetime,dtype='O')
+
+  return output_datetime, output_date
 
 ################################################################################################
 ################################################################################################
@@ -122,19 +213,25 @@ if __name__ == '__main__':
 
   pwd = os.getcwd()
   
-  
+  # Read config file  
   f = open(pwd+'/plot_points.config')
   cfg = yaml.load(f)
   pprint.pprint(cfg)
   
-  
+  # Create list of output files for each run
   runs = {}
+  field = {}
   for run in cfg['model_direcs']:
     direc = cfg['model_direcs'][run]
     wav_files = sorted(glob.glob(direc+'ww3*_tab.nc'))
     wnd_files = sorted(glob.glob(direc+'cfsr*_tab.nc'))
-    runs[run] = [wav_files,wnd_files]
-  
+    if len(wav_files) > 0:
+      runs[run] = [wav_files,wnd_files]
+      field[run] = False
+    else:
+      wav_files = sorted(glob.glob(direc+'ww3*.nc'))
+      runs[run] = [wav_files]
+      field[run] = True
   
   
   #-----------------------------------
@@ -144,26 +241,33 @@ if __name__ == '__main__':
   stations = {}
   for k,run in enumerate(runs):
     data_files = runs[run]
-    data[run],stations[run],output_time,ref_date = read_point_files(data_files,variables)  
+    if field[run]:
+      data[run],stations[run] = interpolate_stations_from_fields(data_files,variables,cfg["station_file"]) 
+    else:
+      data[run],stations[run] = read_point_files(data_files,variables)  
   
-  # Convert output times to date format
-  output_date = []
-  output_datetime = []
-  for t in output_time:
-    date = ref_date + datetime.timedelta(days=t)
-    output_date.append(date.strftime('%Y %m %d %H %M'))
-    output_datetime.append(date)
-  output_datetime = np.asarray(output_datetime,dtype='O')
-  
-  #-------------------------------------------------
-  # Read observation data and plot for each station
-  #-------------------------------------------------
+  # Get list of all stations
   station_list = [] 
   for run in stations:
     for sta in stations[run]['name']:
       station_list.append(sta)
   station_list = list(set(station_list))
-  
+
+  # Find overall date range of data
+  date_min = '3000 01 01 00 00'
+  date_max = '1000 01 01 00 00'
+  frmt = '%Y %m %d %H %M'
+  for run in data:
+    if data[run]['datetime'][0]  < datetime.datetime.strptime(date_min,frmt):
+      date_min = data[run]['date'][0]
+    if data[run]['datetime'][-1] > datetime.datetime.strptime(date_max,frmt):
+      date_max = data[run]['date'][-1]
+  print date_min,date_max
+    
+    
+  #-------------------------------------------------
+  # Read observation data and plot for each station
+  #-------------------------------------------------
   for i,sta in enumerate(station_list):
     print sta
   
@@ -171,7 +275,7 @@ if __name__ == '__main__':
     # Get data from observation file at output times
     obs_file = cfg['obs_direc']+sta+'_'+cfg['year']+'.txt'
     if os.path.isfile(obs_file):
-      obs_data = read_station_data(obs_file,output_date,variables)
+      obs_data = read_station_data(obs_file,date_min,date_max,variables)
         
       # Create figure 
       fig = plt.figure(figsize=[6,12])
@@ -216,6 +320,7 @@ if __name__ == '__main__':
       plot_flag = True
       if count == len(data):
         plot_flag = False
+
   
       if plot_flag == False:
   
@@ -234,7 +339,7 @@ if __name__ == '__main__':
           lines = []
           labels = []
           ax = fig.add_subplot(gs[k+1,:])
-          l1, = ax.plot(output_datetime,obs_data[var])
+          l1, = ax.plot(obs_data['datetime'],obs_data[var])
           lines.append(l1)
           labels.append('Observed')
           for run in data:
@@ -242,7 +347,7 @@ if __name__ == '__main__':
               ind = stations[run]['name'].index(sta)
               if variables[var]['recip'] == True:
                 data[run][var][:,ind] = 1.0/data[run][var][:,ind]
-              l2, = ax.plot(output_datetime,data[run][var][:,ind])
+              l2, = ax.plot(data[run]['datetime'],data[run][var][:,ind])
               lines.append(l2)
               labels.append(run)
           ax.set_title(variables[var]['label'])
