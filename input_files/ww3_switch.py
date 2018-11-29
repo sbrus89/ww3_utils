@@ -9,7 +9,7 @@ def write_switch():
   pwd = os.getcwd()
   
   f = open(pwd+'/ww3_switch.config')
-  switches = oyaml.load(f)
+  switches = yaml.load(f)
 
   
   f = open(pwd+'/switch','w')
