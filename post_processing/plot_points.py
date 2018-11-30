@@ -20,23 +20,33 @@ np.set_printoptions(threshold=np.nan)
 variables = {'hs'  :{'obs_col' : 8,
                      'fill_val': 99.00,
                      'recip'   : False,
-                     'label'   : 'Significant wave height'},
+                     'label'   : 'Significant wave height',
+                     'units'   : 'm',
+                     'aka'     : ['HS']},
              'th1p':{'obs_col' : 11, 
                      'fill_val': 999,
                      'recip'   : False,
-                     'label'   : 'Dominant wave direction'},
+                     'label'   : 'Dominant wave direction',
+                     'units'   : 'deg',
+                     'aka'     : ['dp']},
              'fp'  :{'obs_col' : 9,
                      'fill_val': 99.0,
                      'recip'   : True,
-                     'label'   : 'Dominant wave period'},
+                     'label'   : 'Dominant wave period',
+                     'units'   : 's',
+                     'aka'     : ['FP']},
              'wnd' :{'obs_col' : 6,
                      'fill_val': 99.0,
                      'recip'   : False,
-                     'label'   : 'Wind speed'},
+                     'label'   : 'Wind speed',
+                     'units'   : 'm/s',
+                     'aka'     : ['uwnd','vwnd']},
              'wnddir':{'obs_col' : 5,
                        'fill_val': 999,
                        'recip'   : False,
-                       'label'   : 'Wind direction'}}
+                       'label'   : 'Wind direction',
+                       'units'   : 'deg',
+                       'aka'     : ['uwnd','vwnd']}}
 
 ################################################################################################
 ################################################################################################
@@ -74,6 +84,7 @@ def read_point_files(data_files,variables):
         data['time'][i] = nc_file.variables['time'][:]
       for var in variables:
         if var in nc_file.variables:
+          print var
           data[var][i][:] = nc_file.variables[var][:]
 
   data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
@@ -102,7 +113,7 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
   stations['lat'] = np.asarray(stations['lat'])
   sta_pts = np.column_stack((stations['lon'],stations['lat']))
 
-
+  t = 0.0
   for j,files in enumerate(data_files):
     for i,name in enumerate(files):
       print name.split('/')[-1]
@@ -121,23 +132,60 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
   
           # Time information
           data['time'] = np.empty(nfiles)
-          data['ref_date'] = nc_file.variables['time'].getncattr('units').replace('days since ','')
-          data['ref_date'] = datetime.datetime.strptime(data['ref_date'],'%Y-%m-%d %H:%M:%S')
+          if 'time' in nc_file.variables:
+            data['ref_date'] = nc_file.variables['time'].getncattr('units').replace('days since ','')
+            data['ref_date'] = datetime.datetime.strptime(data['ref_date'],'%Y-%m-%d %H:%M:%S')
+          else:
+            # (for E3SM WW3 output)
+            data['ref_date'] = datetime.datetime.strptime(cfg['ref_date'], '%Y-%m-%d %H:%M:%S')
         
       # Get field grid points
-      lon = nc_file.variables['longitude'][:]
+      if 'longitude' in nc_file.variables:
+        lon = nc_file.variables['longitude'][:]
+        lat = nc_file.variables['latitude'][:]
+      else:
+        # (for E3SM WW3 output)
+        lon  = np.linspace(cfg['lon_range'][0],cfg['lon_range'][1],nc_file.dimensions['NX'].size)
+        lat  = np.linspace(cfg['lat_range'][0],cfg['lat_range'][1],nc_file.dimensions['NY'].size)
       idx = np.where(lon > 180.0)
       lon[idx] = lon[idx] - 360.0
-      lat = nc_file.variables['latitude'][:]
       Lon,Lat = np.meshgrid(lon,lat)
 
+      # Get time
       if j == 0:
-        data['time'][i] = nc_file.variables['time'][:]
+        if 'time' in nc_file.variables:
+          data['time'][i] = nc_file.variables['time'][:]
+        else:
+          # (for E3SM WW3 output)
+          data['time'][i] = t
+          t = t + cfg["out_int"] 
+
+      # Get variables
       for var in variables:
-        if var in nc_file.variables:
+        if var in nc_file.variables or any(x in nc_file.variables for x in variables[var]['aka']):
           print var      
+
+          # Account for alernate variable names
+          if var not in nc_file.variables:
+            ls = [v for v in variables[var]['aka'] if v in nc_file.variables]
+            if len(ls) == 1:                     
+              ncvar = ls[0]                       # scalar fields 
+              field = read_field(nc_file,ncvar)   # with alternate names
+            if len(ls) == 2:
+              ls.sort()                           # vector
+              ncvar1 = ls[0]                      # fields
+              field1 = read_field(nc_file,ncvar1)
+              ncvar2 = ls[1]
+              field2 = read_field(nc_file,ncvar2)
+              if variables[var]['units'] == 'm/s':                       # magnitude
+                field = np.sqrt(np.square(field1)+np.square(field2))  
+              elif variables[var]['units'] == 'deg':                     # direction
+                field = np.arctan2(field2,field1)
+                #field = -np.degrees(field)+360.0
+          else:
+            field = read_field(nc_file,var)      # scalar fields
+
           # Interpolate station values from field
-          field = nc_file.variables[var][0,:,:]
           x = Lon[~field.mask]
           y = Lat[~field.mask]
           field = field[~field.mask]
@@ -152,6 +200,17 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
   data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
 
   return data, stations
+################################################################################################
+################################################################################################
+
+def read_field(nc_file,var):
+  
+  if 'time' in nc_file.variables:
+    field = nc_file.variables[var][0,:,:]
+  else:
+    field = nc_file.variables[var][:,:]
+
+  return field
 
 ################################################################################################
 ################################################################################################
@@ -229,7 +288,7 @@ if __name__ == '__main__':
       runs[run] = [wav_files,wnd_files]
       field[run] = False
     else:
-      wav_files = sorted(glob.glob(direc+'ww3*.nc'))
+      wav_files = sorted(glob.glob(direc+'*ww3*.nc'))
       runs[run] = [wav_files]
       field[run] = True
   
@@ -305,61 +364,37 @@ if __name__ == '__main__':
       m.drawcoastlines()
       ax.plot(lon,lat,'ro')
   
-      # Determine if model data is not available, i.e. values are all the same  (this causes issues with the plot axis)    
-      count = 0
-      for run in data:
-        flag = False
-        for var in variables:
+      # Plot modeled and observed data timeseries
+      for k,var in enumerate(variables):
+        print '  '+var
+        lines = []
+        labels = []
+        ax = fig.add_subplot(gs[k+1,:])
+        l1, = ax.plot(obs_data['datetime'],obs_data[var])
+        lines.append(l1)
+        labels.append('Observed')
+        for run in data:
           if sta in stations[run]['name']:
             ind = stations[run]['name'].index(sta)
-            if len(np.unique(data[run][var][:,ind])) == 1:
-              flag = True
-        if flag == True:
-          count = count + 1
-
-      plot_flag = True
-      if count == len(data):
-        plot_flag = False
-
-  
-      if plot_flag == False:
-  
-        print "  model data not availiable"
-        st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
-        fig.tight_layout()
-        fig.savefig(sta+'.png',bbox_inches='tight')
-        plt.close()
-        continue
-  
-      else:
-  
-        # Plot modeled and observed data timeseries
-        for k,var in enumerate(variables):
-          print '  '+var
-          lines = []
-          labels = []
-          ax = fig.add_subplot(gs[k+1,:])
-          l1, = ax.plot(obs_data['datetime'],obs_data[var])
-          lines.append(l1)
-          labels.append('Observed')
-          for run in data:
-            if sta in stations[run]['name']:
-              ind = stations[run]['name'].index(sta)
-              if variables[var]['recip'] == True:
-                data[run][var][:,ind] = 1.0/data[run][var][:,ind]
-              l2, = ax.plot(data[run]['datetime'],data[run][var][:,ind])
-              lines.append(l2)
-              labels.append(run)
-          ax.set_title(variables[var]['label'])
-          ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-          #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
-          ax.set_xlabel('time')
-          ax.set_ylabel(var)
-        lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
-        st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
-        fig.tight_layout()
-        fig.savefig(sta+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
-        plt.close()
+            if variables[var]['recip'] == True:
+              data[run][var][:,ind] = 1.0/data[run][var][:,ind]
+            l2, = ax.plot(data[run]['datetime'],data[run][var][:,ind])
+            lines.append(l2)
+            labels.append(run)
+        ax.set_title(variables[var]['label'])
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+        ax.set_xlabel('time')
+        ax.set_ylabel(var)
+        if variables[var]['units'] == 'deg':
+          ax.set_ylim([0.0,360.0])          
+        if ax.get_xlim() == (-0.001, 0.001): # Detect when there is no availiable data
+          fig.delaxes(ax)                    # And delete axis to prevent an error
+      lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
+      st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
+      fig.tight_layout()
+      fig.savefig(sta+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
+      plt.close()
   
   if not os.path.exists(cfg["plot_direc"]):
     subprocess.call(['mkdir','-p',cfg["plot_direc"]])
