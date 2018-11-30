@@ -181,7 +181,8 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
                 field = np.sqrt(np.square(field1)+np.square(field2))  
               elif variables[var]['units'] == 'deg':                     # direction
                 field = np.arctan2(field2,field1)
-                #field = -np.degrees(field)+360.0
+                field = np.degrees(field)
+                #field = -field+360.0
           else:
             field = read_field(nc_file,var)      # scalar fields
 
