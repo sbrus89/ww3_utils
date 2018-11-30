@@ -60,13 +60,13 @@ def write_ww3_grid_inp():
   # Namelist parameters
   #---------------------
   for ls in cfg["namelist"]:
-    f.write('&'+ls+' ')
+    f.write('&'+ls+'\n')
     for i,var in enumerate(cfg["namelist"][ls]):
       f.write('   '+var[0]+' = '+var[1])
       if i == len(cfg["namelist"][ls])-1:
         f.write(' /\n')
       else:
-        f.write(', ')
+        f.write(',\n')
   f.write('END OF NAMELISTS\n')
   f.write('$\n')
 
