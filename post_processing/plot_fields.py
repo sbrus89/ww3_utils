@@ -41,10 +41,10 @@ def read_field_e3sm(f):
 
   output_date = f.split('.')[-2] 
 
-  lon  = np.linspace(0.0,360.0,nc_file.dimensions['NX'].size)
-  lat  = np.linspace(-90.0,90.0,nc_file.dimensions['NY'].size)
+  lon  = np.linspace(cfg["lon_range"][0],cfg["lon_range"][1],nc_file.dimensions['NX'].size)
+  lat  = np.linspace(cfg["lat_range"][0],cfg["lat_range"][1],nc_file.dimensions['NY'].size)
 
-  var = nc_file.variables['HS'][:,:]
+  var = nc_file.variables['hs'][:,:]
 
   return lon,lat,var,output_date
 
