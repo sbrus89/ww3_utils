@@ -44,7 +44,7 @@ def interpolate_data_to_grid(grid_file,data_file,var):
 
   # Interpolate timesnaps
   for i,t in enumerate(time):
-    print i
+    print 'Interpolating: '+str(i)
 
     # Get data to interpolate
     data[i,:,0:-1] = np.flipud(data_nc.variables[var][i,:,:])
@@ -54,27 +54,43 @@ def interpolate_data_to_grid(grid_file,data_file,var):
     interpolator = interpolate.RegularGridInterpolator((lon_data,lat_data),data[i,:,:].T,bounds_error=False,fill_value=0.0)
     interp_data[i,:] = interpolator(grid_points)
 
-  return lon_grid,lat_grid,interp_data,lon_data,lat_data,data
+  # Deal with time
+  ref_date = data_nc.variables['time'].getncattr('units').replace('hours since ','').replace('.0 +0:00','')
+  ref_date = datetime.datetime.strptime(ref_date,'%Y-%m-%d %H:%M:%S')
+  xtime = []
+  for t in time:
+    date = ref_date + datetime.timedelta(hours=np.float64(t))
+    xtime.append(date.strftime('%Y-%m-%d_%H:%M:%S'+45*' '))
+  xtime = np.asarray(xtime)
+
+  return lon_grid,lat_grid,interp_data,lon_data,lat_data,data,xtime
 
 ##################################################################################################
 ##################################################################################################
 
-def write_to_file(filename,data,var):
+def write_to_file(filename,data,var,xtime):
 
-  data_nc = netCDF4.Dataset(filename,'a')
+  if os.path.isfile(filename):
+    data_nc = netCDF4.Dataset(filename,'a')
+  else:
+    data_nc = netCDF4.Dataset(filename,'w')
 
-  # Find dimesions
-  ncells = data.shape[1]
-  nsnaps = data.shape[0]
+    # Find dimesions
+    ncells = data.shape[1]
+    nsnaps = data.shape[0]
 
-  # Declare dimensions
-  data_nc.createDimension('nCells',ncells)
-  data_nc.createDimension('StrLen',64)
-  data_nc.createDimension('Time',None)
+    # Declare dimensions
+    data_nc.createDimension('nCells',ncells)
+    data_nc.createDimension('StrLen',64)
+    data_nc.createDimension('Time',None)
+    
+    time = data_nc.createVariable('xtime','S1',('Time','StrLen')) 
+    time[:] = netCDF4.stringtochar(xtime) 
 
   # Declear variables
-  data_var = data_nc.createVariable(var,np.float64,('Time','nCells'))
-     #time = data_nc.createVariable('xtime',np.float64,('Time','StrLen'))
+  time = data_nc.dimensions['Time'].name
+  ncells = data_nc.dimensions['nCells'].name
+  data_var = data_nc.createVariable(var,np.float64,(time,ncells))
 
   # Set variables
   data_var[:,:] = data
@@ -84,7 +100,6 @@ def write_to_file(filename,data,var):
 ##################################################################################################
 
 def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_label):
-  print i
 
   levels = np.linspace(np.amin(data),np.amax(data),10)
 
@@ -119,18 +134,19 @@ if __name__ == '__main__':
   data_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/wnd10m.cdas1.201210.grb2.nc'
 
   # Interpolation of u and v velocities
-  lon_grid,lat_grid,u_interp,lon_data,lat_data,u_data = interpolate_data_to_grid(grid_file,data_file,'U_GRD_L103')
-  lon_grid,lat_grid,v_interp,lon_data,lat_data,v_data = interpolate_data_to_grid(grid_file,data_file,'V_GRD_L103')
+  lon_grid,lat_grid,u_interp,lon_data,lat_data,u_data,xtime = interpolate_data_to_grid(grid_file,data_file,'U_GRD_L103')
+  lon_grid,lat_grid,v_interp,lon_data,lat_data,v_data,xtime = interpolate_data_to_grid(grid_file,data_file,'V_GRD_L103')
  
   # Calculate and plot velocity magnitude
   if args.plot:
     for i in range(u_data.shape[0]):
-      print i 
+      print 'Plotting: '+str(i)
   
       data = np.sqrt(np.square(u_data[i,:,:]) + np.square(v_data[i,:,:]))
       interp_data = np.sqrt(np.square(u_interp[i,:]) + np.square(v_interp[i,:]))
       
       plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,'velocity magnitude')
 
-  write_to_file('test.nc',u_interp,'u_10')
-  write_to_file('test.nc',v_interp,'v_10')
+  subprocess.call(['rm','test.nc'])
+  write_to_file('test.nc',u_interp,'windSpeedU',xtime)
+  write_to_file('test.nc',v_interp,'windSpeedV',xtime)
