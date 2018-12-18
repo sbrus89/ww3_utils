@@ -3,10 +3,10 @@ import subprocess
 #--------------------
 # Request parameters
 #--------------------
-data = 'ssh'
-start_date = '2005-07-01 00:00'
-end_date   = '2005-08-01 00:00'
-data_set   = 'CFSR hourly'
+data = 'pressure'
+start_date = '2012-10-01 00:00'
+end_date   = '2012-12-01 00:00'
+data_set   = 'CFSRv2 hourly'
 region_box = ['-180','180','-90','90']
 
 if data == 'wind':
@@ -18,7 +18,8 @@ if data == 'wind':
                 '5 hr forecast',
                 '6 hr forecast']
   levels     = ['specified height above ground: 10m']
-  grids      = ['0.5x0.5 (720x361)']
+  #grids      = ['0.5x0.5 (720x361)']
+  grids      = ['0.205x0.204']
 elif data == 'currents':
   parameters = ['ucurrent','vcurrent']
   products   = ['1 hr average (initial+0 to initial+1)',
@@ -39,17 +40,28 @@ elif data == 'ssh':
                 '1 hr average (initial+5 to initial+6)']
   levels     = ['ground or water surface']
   grids      = ['0.5x0.5 (720x360)']
+elif data == 'pressure':
+  parameters = ['pressure']
+  products   = ['1 hr forecast',
+                '2 hr forecast',
+                '3 hr forecast',
+                '4 hr forecast',
+                '5 hr forecast',
+                '6 hr forecast']
+  levels = ['mean sea level']
+  grids = ['0.5x0.5 (720x361)'] 
 
 #------------------------
 # Request paramter codes
 #------------------------
 data_set_codes  = {'CFSR hourly'  :'093.1',
                    'CFSRv2 hourly':'094.1'}
-parameter_codes = {'uwind':'3%217-0.2-1:0.2.2',
-                   'vwind':'3%217-0.2-1:0.2.3',
-                   'ucurrent':'3%217-4.2-1:10.1.2',
-                   'vcurrent':'3%217-4.2-1:10.1.3',
-                   'ssh':'3%217-4.2-1:10.3.195'}
+parameter_codes = {'uwind'        :'3%217-0.2-1:0.2.2',
+                   'vwind'        :'3%217-0.2-1:0.2.3',
+                   'ucurrent'     :'3%217-4.2-1:10.1.2',
+                   'vcurrent'     :'3%217-4.2-1:10.1.3',
+                   'ssh'          :'3%217-4.2-1:10.3.195',
+                   'pressure'     :'3%217-0.2-1:0.3.1'}
 product_codes   = {'6 hr forecast':'3',
                    '3 hr forecast':'119',
                    '1 hr forecast':'486',
@@ -62,14 +74,16 @@ product_codes   = {'6 hr forecast':'3',
                    '1 hr average (initial+3 to initial+4)':'947',
                    '1 hr average (initial+4 to initial+5)':'948',
                    '1 hr average (initial+5 to initial+6)':'949'}
-grid_codes      = {'0.312x0.312'       :'83',
+grid_codes      = {'0.205x0.204'       :'68', # 0.205 x ~0.204 from 0E to 359.795E and 89.844N to 89.844S (1760 x 880 Longitude/Gaussian Latitude)
+                   '0.312x0.312'       :'83',
                    '0.5x0.5 (720x361)' :'57',
                    '0.5x0.5 (720x360)' :'63',
                    '1.875x1.904'       :'3' ,
                    '2.5x2.5'           :'4'}
 level_codes     = {'specified height above ground: 10m':'223',
                    'depth below sea level: 5m'         :'128',
-                   'ground or water surface'           :'107,210'}
+                   'ground or water surface'           :'107,210',
+                   'mean sea level'                    :'219'}
 
 #----------------
 # Log in command
