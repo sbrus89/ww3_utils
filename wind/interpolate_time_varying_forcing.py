@@ -132,6 +132,7 @@ if __name__ == '__main__':
   # Files to interpolate to/from
   grid_file = '/users/sbrus/scratch4/MPAS-O_testing/ocean/global_ocean/USDEQU120cr10rr1/init/culled_mesh/culled_mesh.nc'
   data_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/wnd10m.cdas1.201210.grb2.nc'
+  forcing_file = 'atmosphere_forcing.nc'
 
   # Interpolation of u and v velocities
   lon_grid,lat_grid,u_interp,lon_data,lat_data,u_data,xtime = interpolate_data_to_grid(grid_file,data_file,'U_GRD_L103')
@@ -147,6 +148,6 @@ if __name__ == '__main__':
       
       plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,'velocity magnitude')
 
-  subprocess.call(['rm','test.nc'])
-  write_to_file('test.nc',u_interp,'windSpeedU',xtime)
-  write_to_file('test.nc',v_interp,'windSpeedV',xtime)
+  subprocess.call(['rm',forcing_file])
+  write_to_file(forcing_file,u_interp,'windSpeedU',xtime)
+  write_to_file(forcing_file,v_interp,'windSpeedV',xtime)
