@@ -44,7 +44,7 @@ def interpolate_data_to_grid(grid_file,data_file,var):
 
   # Interpolate timesnaps
   for i,t in enumerate(time):
-    print 'Interpolating: '+str(i)
+    print 'Interpolating '+var+': '+str(i)
 
     # Get data to interpolate
     data[i,:,0:-1] = np.flipud(data_nc.variables[var][i,:,:])
@@ -83,7 +83,8 @@ def write_to_file(filename,data,var,xtime):
     data_nc.createDimension('nCells',ncells)
     data_nc.createDimension('StrLen',64)
     data_nc.createDimension('Time',None)
-    
+
+    # Create time variable    
     time = data_nc.createVariable('xtime','S1',('Time','StrLen')) 
     time[:] = netCDF4.stringtochar(xtime) 
 
@@ -99,10 +100,11 @@ def write_to_file(filename,data,var,xtime):
 ##################################################################################################
 ##################################################################################################
 
-def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_label):
+def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_label,var_abrev):
 
   levels = np.linspace(np.amin(data),np.amax(data),10)
 
+  # Plot data
   fig = plt.figure()
   ax0 = fig.add_subplot(2,1,1)
   cf = ax0.contourf(lon_data,lat_data,data,levels=levels)
@@ -110,14 +112,16 @@ def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_la
   cbar = fig.colorbar(cf,ax=ax0)
   cbar.set_label(var_label)
 
+  # Plot interpolated data
   ax1 = fig.add_subplot(2,1,2)
   cf = ax1.tricontourf(lon_grid,lat_grid,interp_data,levels=levels)
   ax1.set_title('interpolated data')
   cbar = fig.colorbar(cf,ax=ax1)
   cbar.set_label(var_label)
 
+  # Save figure
   fig.tight_layout()
-  fig.savefig('vel_'+str(i).zfill(3)+'.png',box_inches='tight')
+  fig.savefig(var_abrev+'_'+str(i).zfill(4)+'.png',box_inches='tight')
   plt.close()
 
 ##################################################################################################
@@ -128,26 +132,46 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--plot',action='store_true')
   args = parser.parse_args()
-  
+ 
+  nplot = 10
+ 
   # Files to interpolate to/from
   grid_file = '/users/sbrus/scratch4/MPAS-O_testing/ocean/global_ocean/USDEQU120cr10rr1/init/culled_mesh/culled_mesh.nc'
-  data_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/wnd10m.cdas1.201210.grb2.nc'
-  forcing_file = 'atmosphere_forcing.nc'
+  wind_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/wnd10m.nc'
+  pres_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/prmsl.nc'
+  forcing_file = 'atmospheric_forcing.nc'
 
   # Interpolation of u and v velocities
-  lon_grid,lat_grid,u_interp,lon_data,lat_data,u_data,xtime = interpolate_data_to_grid(grid_file,data_file,'U_GRD_L103')
-  lon_grid,lat_grid,v_interp,lon_data,lat_data,v_data,xtime = interpolate_data_to_grid(grid_file,data_file,'V_GRD_L103')
+  lon_grid,lat_grid,u_interp,lon_data,lat_data,u_data,xtime = interpolate_data_to_grid(grid_file,wind_file,'U_GRD_L103')
+  lon_grid,lat_grid,v_interp,lon_data,lat_data,v_data,xtime = interpolate_data_to_grid(grid_file,wind_file,'V_GRD_L103')
  
   # Calculate and plot velocity magnitude
   if args.plot:
     for i in range(u_data.shape[0]):
-      print 'Plotting: '+str(i)
-  
-      data = np.sqrt(np.square(u_data[i,:,:]) + np.square(v_data[i,:,:]))
-      interp_data = np.sqrt(np.square(u_interp[i,:]) + np.square(v_interp[i,:]))
-      
-      plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,'velocity magnitude')
+      if i % nplot == 0:
 
+        print 'Plotting vel: '+str(i)
+  
+        data = np.sqrt(np.square(u_data[i,:,:]) + np.square(v_data[i,:,:]))
+        interp_data = np.sqrt(np.square(u_interp[i,:]) + np.square(v_interp[i,:]))
+      
+        plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,'velocity magnitude','vel')
+
+  # Interpolation of atmospheric pressure
+  lon_grid,lat_grid,p_interp,lon_data,lat_data,p_data,xtime = interpolate_data_to_grid(grid_file,pres_file,'PRMSL_L101')
+  
+  # Plot atmopheric pressure
+  if args.plot:
+    for i in range(p_data.shape[0]):
+      if i % nplot == 0:
+
+        print 'Plotting pres: '+str(i)
+
+        plot_interp_data(lon_data,lat_data,p_data[i,:,:],lon_grid,lat_grid,p_interp[i,:],'atmospheric pressure','pres')
+  
+  # Write to NetCDF file
   subprocess.call(['rm',forcing_file])
   write_to_file(forcing_file,u_interp,'windSpeedU',xtime)
   write_to_file(forcing_file,v_interp,'windSpeedV',xtime)
+  write_to_file(forcing_file,p_interp,'atmosPressure',xtime)
+
