@@ -71,9 +71,9 @@ def interpolate_data_to_grid(grid_file,data_file,var):
 def write_to_file(filename,data,var,xtime):
 
   if os.path.isfile(filename):
-    data_nc = netCDF4.Dataset(filename,'a')
+    data_nc = netCDF4.Dataset(filename,'a', format='NETCDF3_64BIT_OFFSET')
   else:
-    data_nc = netCDF4.Dataset(filename,'w')
+    data_nc = netCDF4.Dataset(filename,'w', format='NETCDF3_64BIT_OFFSET')
 
     # Find dimesions
     ncells = data.shape[1]
@@ -94,13 +94,13 @@ def write_to_file(filename,data,var,xtime):
   data_var = data_nc.createVariable(var,np.float64,(time,ncells))
 
   # Set variables
-  data_var[:,:] = data
+  data_var[:,:] = data[:,:]
   data_nc.close()
 
 ##################################################################################################
 ##################################################################################################
 
-def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_label,var_abrev):
+def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_label,var_abrev,time):
 
   levels = np.linspace(np.amin(data),np.amax(data),10)
 
@@ -108,14 +108,22 @@ def plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,var_la
   fig = plt.figure()
   ax0 = fig.add_subplot(2,1,1)
   cf = ax0.contourf(lon_data,lat_data,data,levels=levels)
-  ax0.set_title('data')
+  m = Basemap(projection='cyl',llcrnrlat=-90,urcrnrlat=90,\
+                               llcrnrlon=0,urcrnrlon=360,resolution='c')
+  m.fillcontinents(color='tan',lake_color='lightblue')
+  m.drawcoastlines()
+  ax0.set_title('data '+time.strip())
   cbar = fig.colorbar(cf,ax=ax0)
   cbar.set_label(var_label)
 
   # Plot interpolated data
   ax1 = fig.add_subplot(2,1,2)
   cf = ax1.tricontourf(lon_grid,lat_grid,interp_data,levels=levels)
-  ax1.set_title('interpolated data')
+  m = Basemap(projection='cyl',llcrnrlat=-90,urcrnrlat=90,\
+                               llcrnrlon=0,urcrnrlon=360,resolution='c')
+  m.fillcontinents(color='tan',lake_color='lightblue')
+  m.drawcoastlines()
+  ax1.set_title('interpolated data '+time.strip())
   cbar = fig.colorbar(cf,ax=ax1)
   cbar.set_label(var_label)
 
@@ -136,9 +144,9 @@ if __name__ == '__main__':
   nplot = 10
  
   # Files to interpolate to/from
-  grid_file = '/users/sbrus/scratch4/MPAS-O_testing/ocean/global_ocean/USDEQU120cr10rr1/init/culled_mesh/culled_mesh.nc'
-  wind_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/wnd10m.nc'
-  pres_file = '/users/sbrus/scratch4/MPAS-O_testing/time_varying_forcing/wind_data/prmsl.nc'
+  grid_file = '/users/sbrus/scratch4/MPAS-O_testing/ocean/hurricane/USDEQU120cr10rr1/build_mesh/culled_mesh/culled_mesh.nc'
+  wind_file = '/users/sbrus/scratch4/MPAS-O_testing/ocean/hurricane/USDEQU120cr10rr1/time_varying_forcing/wind_data/wnd10m.nc'
+  pres_file = '/users/sbrus/scratch4/MPAS-O_testing/ocean/hurricane/USDEQU120cr10rr1/time_varying_forcing/wind_data/prmsl.nc'
   forcing_file = 'atmospheric_forcing.nc'
 
   # Interpolation of u and v velocities
@@ -155,7 +163,7 @@ if __name__ == '__main__':
         data = np.sqrt(np.square(u_data[i,:,:]) + np.square(v_data[i,:,:]))
         interp_data = np.sqrt(np.square(u_interp[i,:]) + np.square(v_interp[i,:]))
       
-        plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,'velocity magnitude','vel')
+        plot_interp_data(lon_data,lat_data,data,lon_grid,lat_grid,interp_data,'velocity magnitude','vel',xtime[i])
 
   # Interpolation of atmospheric pressure
   lon_grid,lat_grid,p_interp,lon_data,lat_data,p_data,xtime = interpolate_data_to_grid(grid_file,pres_file,'PRMSL_L101')
@@ -167,7 +175,7 @@ if __name__ == '__main__':
 
         print 'Plotting pres: '+str(i)
 
-        plot_interp_data(lon_data,lat_data,p_data[i,:,:],lon_grid,lat_grid,p_interp[i,:],'atmospheric pressure','pres')
+        plot_interp_data(lon_data,lat_data,p_data[i,:,:],lon_grid,lat_grid,p_interp[i,:],'atmospheric pressure','pres',xtime[i])
   
   # Write to NetCDF file
   subprocess.call(['rm',forcing_file])
