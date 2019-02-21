@@ -11,6 +11,10 @@ year = '2005'
 run_start_date = '01-01'
 run_end_date   = '12-31'
 movement_tolerance = 0.1
+data_product = 'spectral wave'
+
+data_product_ID = {'standard meterological':[['stdmet','h']],
+                   'spectral wave':[['swden','w'],['swdir','d'],['swdir2','i'],['swr1','j'],['swr2','k']]}
 
 # Convert dates to datetime objects
 datetime_frmt = '%Y-%m-%d'
@@ -88,9 +92,12 @@ for i,sta in enumerate(root):
 # Download station data and write to station list file
 f = open(pwd+'/stations.txt','w')
 for sta in stations:
+      
+      print "Station "+sta
  
       # Skip if station has moved
       if stations[sta]['moved'] == True:
+        print " station has moved"
         continue
 
       # Get station information
@@ -100,28 +107,53 @@ for sta in stations:
       lat = stations[sta]['history'][0]['lat']
       ID = sta.strip("'")
 
+      # Additional check to see if all data products exist
+      all_data_exists = True
+      station_found = True
+      for prod in data_product_ID[data_product]:
+        try:
+          url = 'https://www.ndbc.noaa.gov/station_history.php?station='+ID
+          data = urllib2.urlopen(url).read()
+          if data.find(ID+prod[1]+year) < 0:
+            all_data_exists = False
+        except:
+          station_found = False
+
+      if not station_found:
+        print '  station not found'
+        continue 
+
+      if not all_data_exists:
+        print "  not all data products exist for this year"
+        continue
+ 
       # Download data
       success = False
-      try:
-        print 'downloading '+ID
-        url = 'https://www.ndbc.noaa.gov/view_text_file.php?filename='+ID+'h'+year+'.txt.gz&dir=data/historical/stdmet/'
-        data = urllib2.urlopen(url).read().splitlines()
-        success = True
-      except:
-        print '  error downloading data'
+      added_to_list = False
+      for prod in data_product_ID[data_product]:
+        try:
+          print '  downloading '+ID+ ' '+prod[0]
 
-      # Write to file
-      if success:
-        print data[0]
-        if data[0].find('YYYY MM DD hh mm') >= 0:
+          url = 'https://www.ndbc.noaa.gov/view_text_file.php?filename='+ID+prod[1]+year+'.txt.gz&dir=data/historical/'+prod[0]+'/'
+          data = urllib2.urlopen(url).read().splitlines()
+          success = True
+        except:
+          print '  error downloading data'
 
-          # Save station data file
-          fd = open(ID+'_'+year+'.txt','w')
-          fd.write('\n'.join(data))
-          fd.close()
+        # Write to file
+        if success:
+          print data[0]
+          if data[0].find('YYYY MM DD hh mm') >= 0:
 
-          # Add to stations list file
-          f.write('  '.join([lon,lat,sta,owner,prgm])+'\n')
-        else: 
-          print '  data not availiable'
+            # Save station data file
+            fd = open(ID+'_'+year+'_'+prod[0]+'.txt','w')
+            fd.write('\n'.join(data))
+            fd.close()
+
+            # Add to stations list file
+            if not added_to_list:
+              f.write('  '.join([lon,lat,sta,owner,prgm])+'\n')
+              added_to_list = True
+          else: 
+            print '  data not availiable'
     
