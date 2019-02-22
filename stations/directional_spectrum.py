@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.basemap import Basemap
+from scipy import interpolate
 import pprint
 
 mode = 'average'
@@ -18,38 +19,83 @@ def read_station_data(sta,year,variables):
 
   obs_data = {}
   for i,var in enumerate(variables):
-    print '  reading'+var
+    print '  reading '+var
 
-    success = True
- 
     # Open station data file
     f = open(data_direc+sta+'_'+year+'_'+var+'.txt','r')
     obs = f.read().splitlines()
   
     # Get the fequency data and initialize time list
-    obs_data[var] = []
-    if i == 0:
-      obs_data['freq'] = obs[0].strip().split()[5:]
-      obs_data['freq'] = np.asarray(obs_data['freq'])
-      obs_data['freq'] = obs_data['freq'].astype(np.float)
-      obs_data['datetime'] = []
-      nfreq = len(obs_data['freq'])
+    obs_data[var] = {}
+    obs_data[var]['data'] = []
+    obs_data[var]['freq'] = obs[0].strip().split()[5:]
+    obs_data[var]['datetime'] = []
 
     # Get the spectral variable data
     for j,line in enumerate(obs[1:]):
       line_sp = line.split()
 
-      if i == 0:
-        obs_data['datetime'].append(' '.join(line_sp[0:5]))
-      obs_data[var].append(line_sp[5:])
-      if len(line_sp[5:]) != nfreq:
-        success = False
+      obs_data[var]['datetime'].append(' '.join(line_sp[0:5]))
+      obs_data[var]['data'].append(line_sp[5:])
  
     # Convert observation data to numpy array
-    obs_data[var] = np.asarray(obs_data[var],dtype=np.float)            
+    obs_data[var]['data'] = np.asarray(obs_data[var]['data'],dtype=np.float)            
+    obs_data[var]['freq'] = np.asarray(obs_data[var]['freq'],dtype=np.float)
     
   
-  return obs_data,success
+  return obs_data
+
+#######################################################################
+#######################################################################
+
+def interpolate_station_data(obs_data,variables):
+
+  # Check if number of frequency bins is different accross data variables
+  nfreq = obs_data['swden']['freq'].size
+  need_to_interpolate = False
+  for var in variables:
+    if obs_data[var]['freq'].size != nfreq:
+      need_to_interpolate = True
+
+  # Early return if interpolation is not needed
+  if need_to_interpolate == False:
+    obs_data['freq'] = obs_data['swden']['freq']
+    return 
+ 
+
+  # Decide which frequency range to interpolate to
+  nfreq_min = 999
+  var_min = ''
+  for var in variables:
+    nfreq = obs_data[var]['freq'].size
+    print var, nfreq
+    if nfreq < nfreq_min:
+      nfreq_min = nfreq
+      var_min = var
+
+  obs_data['freq'] = obs_data[var_min]['freq']
+
+  for var in variables:    
+      print '  interpolating '+ var
+      if var.find('dir') > 0:
+        data = np.rad2deg(np.unwrap(np.deg2rad(obs_data[var]['data'])))
+      else:
+        data = obs_data[var]['data']
+      print obs_data[var]['freq'].shape, data.shape
+      f = interpolate.interp1d(obs_data[var]['freq'],data)     
+      interp_data = f(obs_data[var_min]['freq'])
+
+      if var.find('dir') > 0:
+        interp_data = interp_data % 360
+      print obs_data[var]['data'].shape, interp_data.shape 
+      obs_data[var]['data'] = interp_data
+      obs_data[var]['freq'] = obs_data[var_min]['freq']
+      print obs_data[var]['data'].shape
+
+      
+ 
+  
+    
 
 #######################################################################
 #######################################################################
@@ -61,13 +107,13 @@ def compute_spectrum(obs_data,variables,mode='average'):
   success = True
 
   # Check that number of time snaps are the same for all data variables
-  nsnaps = len(obs_data['datetime'])
+  nsnaps = len(obs_data['swden']['datetime'])
   for var in variables:
-    if obs_data[var].shape[0] != nsnaps:
+    if obs_data[var]['data'].shape[0] != nsnaps:
       success = False
 
   # Setup spectrum dimensions 
-  nfreq = obs_data['freq'].size
+  nfreq = obs_data['swden']['freq'].size
   ndir = 37
   theta = np.radians(np.linspace(0.0,360.0,ndir))[np.newaxis].T
   obs_data['theta'] = theta
@@ -88,15 +134,15 @@ def compute_spectrum(obs_data,variables,mode='average'):
     # Check for missing data
     missing_data = False
     for var in variables:
-      if np.amax(obs_data[var][i,0:nfreq]) == 999.0:
+      if np.amax(obs_data[var]['data'][i,0:nfreq]) == 999.0:
         missing_data = True
 
     # Get data variables
-    C11    = obs_data['swden'][i,0:nfreq]
-    alpha1 = np.radians(obs_data['swdir'][i,0:nfreq])
-    alpha2 = np.radians(obs_data['swdir2'][i,0:nfreq])
-    r1     = obs_data['swr1'][i,0:nfreq]*0.01
-    r2     = obs_data['swr2'][i,0:nfreq]*0.01
+    C11    = obs_data['swden']['data'][i,0:nfreq]
+    alpha1 = np.radians(obs_data['swdir']['data'][i,0:nfreq])
+    alpha2 = np.radians(obs_data['swdir2']['data'][i,0:nfreq])
+    r1     = obs_data['swr1']['data'][i,0:nfreq]*0.01
+    r2     = obs_data['swr2']['data'][i,0:nfreq]*0.01
  
     # Compute spectrum from data
     spec = C11*(0.5 + r1*np.cos(theta-alpha1) + r2*np.cos(2.0*(theta-alpha2)))/np.pi
@@ -187,11 +233,12 @@ if __name__ == '__main__':
     #  continue
   
     # Read station data variables
-    obs_data,success = read_station_data(sta,year,variables)
+    obs_data = read_station_data(sta,year,variables)
+
+    interpolate_station_data(obs_data,variables)
     
     # Compute the spectrum from the data variables
-    if success:
-      spectrum, success = compute_spectrum(obs_data,variables,mode)
+    spectrum, success = compute_spectrum(obs_data,variables,mode)
   
     # Plot the spectrum 
     if success:
