@@ -54,7 +54,7 @@ def read_station_data(sta,year,variables):
 #######################################################################
 #######################################################################
 
-def compute_spectrum(obs_data, mode='average'):
+def compute_spectrum(obs_data,variables,mode='average'):
 
   print '  computing spectrum'
 
@@ -62,8 +62,9 @@ def compute_spectrum(obs_data, mode='average'):
 
   # Check that number of time snaps are the same for all data variables
   nsnaps = len(obs_data['datetime'])
-  if obs_data['swden'].shape[0] != nsnaps or obs_data['swdir'].shape[0] != nsnaps or obs_data['swdir2'].shape[0] != nsnaps or obs_data['swr1'].shape[0] != nsnaps or obs_data['swr2'].shape[0] != nsnaps:
-    success = False
+  for var in variables:
+    if obs_data[var].shape[0] != nsnaps:
+      success = False
 
   # Setup spectrum dimensions 
   nfreq = obs_data['freq'].size
@@ -84,17 +85,18 @@ def compute_spectrum(obs_data, mode='average'):
   # Compute the spectrum for each time snap
   for i in range(nsnaps):
  
+    # Check for missing data
+    missing_data = False
+    for var in variables:
+      if np.amax(obs_data[var][i,0:nfreq]) == 999.0:
+        missing_data = True
+
     # Get data variables
     C11    = obs_data['swden'][i,0:nfreq]
     alpha1 = np.radians(obs_data['swdir'][i,0:nfreq])
     alpha2 = np.radians(obs_data['swdir2'][i,0:nfreq])
     r1     = obs_data['swr1'][i,0:nfreq]*0.01
     r2     = obs_data['swr2'][i,0:nfreq]*0.01
-    
-    # Check for missing data
-    missing_data = False
-    if np.amax(C11) == 999.0 or np.amax(alpha1) == 999.0 or np.amax(alpha2) == 999.0 or np.amax(r1) == 999.0 or np.amax(r1) == 999.0:
-      missing_data = True
  
     # Compute spectrum from data
     spec = C11*(0.5 + r1*np.cos(theta-alpha1) + r2*np.cos(2.0*(theta-alpha2)))/np.pi
@@ -189,7 +191,7 @@ if __name__ == '__main__':
     
     # Compute the spectrum from the data variables
     if success:
-      spectrum, success = compute_spectrum(obs_data,mode)
+      spectrum, success = compute_spectrum(obs_data,variables,mode)
   
     # Plot the spectrum 
     if success:
