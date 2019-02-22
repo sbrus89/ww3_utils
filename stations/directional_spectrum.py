@@ -4,8 +4,8 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.basemap import Basemap
 import pprint
 
-#mode = 'average'
-mode = 'individual'
+mode = 'average'
+#mode = 'individual'
 data_direc = 'spectral_data/'
 year = '2005'
 
@@ -45,7 +45,7 @@ def read_station_data(sta,year,variables):
       if len(line_sp[5:]) != nfreq:
         success = False
  
-    # Convert observation data
+    # Convert observation data to numpy array
     obs_data[var] = np.asarray(obs_data[var],dtype=np.float)            
     
   
@@ -60,37 +60,53 @@ def compute_spectrum(obs_data, mode='average'):
 
   success = True
 
+  # Check that number of time snaps are the same for all data variables
   nsnaps = len(obs_data['datetime'])
   if obs_data['swden'].shape[0] != nsnaps or obs_data['swdir'].shape[0] != nsnaps or obs_data['swdir2'].shape[0] != nsnaps or obs_data['swr1'].shape[0] != nsnaps or obs_data['swr2'].shape[0] != nsnaps:
     success = False
 
+  # Setup spectrum dimensions 
   nfreq = obs_data['freq'].size
   ndir = 37
   theta = np.radians(np.linspace(0.0,360.0,ndir))[np.newaxis].T
   obs_data['theta'] = theta
 
+  # Initialize the spectrum variable
   if mode == 'average':
     spectrum = np.zeros((1,ndir,nfreq))
   elif mode == 'individual':
     spectrum = np.zeros((nsnaps,ndir,nfreq))
  
+  # Early return if number of time snaps isn't the same for all data variables
   if success == False:
     return spectrum, success
 
+  # Compute the spectrum for each time snap
   for i in range(nsnaps):
+ 
+    # Get data variables
     C11    = obs_data['swden'][i,0:nfreq]
     alpha1 = np.radians(obs_data['swdir'][i,0:nfreq])
     alpha2 = np.radians(obs_data['swdir2'][i,0:nfreq])
     r1     = obs_data['swr1'][i,0:nfreq]*0.01
     r2     = obs_data['swr2'][i,0:nfreq]*0.01
+    
+    # Check for missing data
+    missing_data = False
+    if np.amax(C11) == 999.0 or np.amax(alpha1) == 999.0 or np.amax(alpha2) == 999.0 or np.amax(r1) == 999.0 or np.amax(r1) == 999.0:
+      missing_data = True
  
+    # Compute spectrum from data
     spec = C11*(0.5 + r1*np.cos(theta-alpha1) + r2*np.cos(2.0*(theta-alpha2)))/np.pi
 
+    # Either store spectrum of accumulate for average
     if mode == 'average':
-      spectrum[0,:,:] = spectrum[0,:,:] + spec 
+      if not missing_data:
+        spectrum[0,:,:] = spectrum[0,:,:] + spec 
     elif mode == 'individual':
       spectrum[i,:,:] = spec 
     
+  # Complete the average calculation
   if mode == 'average':
     spectrum = spectrum/float(nsnaps)
 
@@ -112,6 +128,7 @@ def plot_station_spectrum(sta,lon,lat,dates,freq,theta,obs_data):
 
     if i % 20 == 0:
 
+      # Create figure
       fig = plt.figure(figsize=[6,8])
       gs = gridspec.GridSpec(nrows=2,ncols=2,figure=fig)
 
@@ -131,9 +148,8 @@ def plot_station_spectrum(sta,lon,lat,dates,freq,theta,obs_data):
       m.drawcoastlines()
       ax.plot(lon,lat,'ro')
 
+      # Plot spectrum
       ax = fig.add_subplot(gs[1,:],polar=True)
-
-      #fig,ax = plt.subplots(subplot_kw=dict(projection='polar'))
       ax.set_theta_zero_location("N")
       ax.set_theta_direction(-1)
       cax = ax.contourf(Theta,R,spectrum[i,:,:],30)
@@ -165,14 +181,17 @@ if __name__ == '__main__':
     lat = float(line.split('  ')[1])
     print sta
 
-    if sta != '46042':
-      continue
+    #if sta != '46042':
+    #  continue
   
+    # Read station data variables
     obs_data,success = read_station_data(sta,year,variables)
     
+    # Compute the spectrum from the data variables
     if success:
       spectrum, success = compute_spectrum(obs_data,mode)
   
+    # Plot the spectrum 
     if success:
       if mode == 'average':
         plot_station_spectrum(sta,lon,lat,['averaged over '+year],obs_data['freq'],obs_data['theta'],spectrum)  
