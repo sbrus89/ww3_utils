@@ -5,7 +5,7 @@ from mpl_toolkits.basemap import Basemap
 from scipy import interpolate
 import pprint
 
-mode = 'average'
+mode = 'stats'
 #mode = 'individual'
 data_direc = 'spectral_data/'
 year = '2005'
@@ -51,6 +51,7 @@ def read_station_data(sta,year,variables):
 def interpolate_station_data(obs_data,variables):
 
   # Fix inconsistancies between number of frequency bins and data
+  # (sometimes there are frequency bins listed with no data associated with them)
   for var in variables:
     nfreq = obs_data[var]['data'].shape[1]
     obs_data[var]['freq'] = obs_data[var]['freq'][0:nfreq]
@@ -67,12 +68,12 @@ def interpolate_station_data(obs_data,variables):
     obs_data['freq'] = obs_data['swden']['freq']
     return 
  
+  # ----------------------------------------------------
 
   # Find coarsest frequency range to interpolate data to
   var_min = ''
   nfreq_min = 999 
   for var in variables:
-    print var, nfreq
     if nfreq < nfreq_min:
       var_min = var
       nfreq_min = nfreq
@@ -92,7 +93,6 @@ def interpolate_station_data(obs_data,variables):
   # Make sure frequency range used for interpolation is within other frequency ranges
   data_mask, = np.where((obs_data[var_min]['freq'] >= freq_min) &  (obs_data[var_min]['freq'] <= freq_max))
   obs_data['freq'] = obs_data[var_min]['freq'][data_mask]
-  print obs_data['freq']
 
   # Interploate variables
   for var in variables:    
@@ -121,19 +121,43 @@ def interpolate_station_data(obs_data,variables):
 #######################################################################
 #######################################################################
 
+def match_dates(obs_data,variables):
+
+  success = True
+
+  # Find the intersection of all dates across variables
+  dates = set(obs_data['swden']['datetime'])
+  for var in variables:
+    dates = set.intersection(dates,set(obs_data[var]['datetime']))
+  dates = list(dates)
+  
+  for var in variables:
+    print '  matching dates '+var
+
+    # Find indices of dates in intersection set
+    indices = [i for i, x in enumerate(obs_data[var]['datetime']) if x in dates]
+    indices = np.asarray(indices,dtype=np.int)
+    
+    # Select only dates that are in the intersection set 
+    obs_data[var]['data'] = obs_data[var]['data'][indices,:]
+    obs_data[var]['datetime'] = dates
+
+  # Indicate whether any dates were matching 
+  if len(dates) == 0:
+    success = False
+
+  return success
+
+  
+#######################################################################
+#######################################################################
+
 def compute_spectrum(obs_data,variables,mode='average'):
 
   print '  computing spectrum'
 
-  success = True
-
-  # Check that number of time snaps are the same for all data variables
+  # Setup spectrum dimensions
   nsnaps = len(obs_data['swden']['datetime'])
-  for var in variables:
-    if obs_data[var]['data'].shape[0] != nsnaps:
-      success = False
-
-  # Setup spectrum dimensions 
   nfreq = obs_data['swden']['freq'].size
   ndir = 37
   theta = np.radians(np.linspace(0.0,360.0,ndir))[np.newaxis].T
@@ -144,11 +168,9 @@ def compute_spectrum(obs_data,variables,mode='average'):
     spectrum = np.zeros((1,ndir,nfreq))
   elif mode == 'individual':
     spectrum = np.zeros((nsnaps,ndir,nfreq))
+  elif mode == 'max':
+    spectrum = np.zeros((1,ndir,nfreq))+-999.0
  
-  # Early return if number of time snaps isn't the same for all data variables
-  if success == False:
-    return spectrum, success
-
   # Compute the spectrum for each time snap
   for i in range(nsnaps):
  
@@ -174,22 +196,26 @@ def compute_spectrum(obs_data,variables,mode='average'):
         spectrum[0,:,:] = spectrum[0,:,:] + spec 
     elif mode == 'individual':
       spectrum[i,:,:] = spec 
+    elif mode == 'max':
+      if not missing_data:
+        spectrum[0,:,:] = np.maximum(spectrum[0,:,:],spec) 
+      
     
   # Complete the average calculation
   if mode == 'average':
     spectrum = spectrum/float(nsnaps)
 
-  return spectrum, success
+  return spectrum
 
 
 #######################################################################
 #######################################################################
 
-def plot_station_spectrum(sta,lon,lat,dates,freq,theta,obs_data):
+def plot_station_spectrum(sta,lon,lat,freq,theta,spectrum1,labels1,spectrum2=None,labels2=None):
 
   print '  plotting spectrum'
 
-  nsnaps = len(dates)
+  nsnaps = len(labels1)
 
   R,Theta = np.meshgrid(freq,theta)
 
@@ -198,7 +224,7 @@ def plot_station_spectrum(sta,lon,lat,dates,freq,theta,obs_data):
     if i % 20 == 0:
 
       # Create figure
-      fig = plt.figure(figsize=[6,8])
+      fig = plt.figure(figsize=[9.5,8])
       gs = gridspec.GridSpec(nrows=2,ncols=2,figure=fig)
 
       # Plot global station location
@@ -218,12 +244,26 @@ def plot_station_spectrum(sta,lon,lat,dates,freq,theta,obs_data):
       ax.plot(lon,lat,'ro')
 
       # Plot spectrum
-      ax = fig.add_subplot(gs[1,:],polar=True)
+      if spectrum2 is None:
+        ax = fig.add_subplot(gs[1,:],polar=True)
+      else:
+        ax = fig.add_subplot(gs[1,0],polar=True)
+
       ax.set_theta_zero_location("N")
       ax.set_theta_direction(-1)
-      cax = ax.contourf(Theta,R,spectrum[i,:,:],30)
+      cax = ax.contourf(Theta,R,spectrum1[i,:,:],30)
       cb = fig.colorbar(cax)
-      ax.set_title('Directional spectrum '+dates[i])
+      ax.set_title('Directional spectrum '+labels1[i])
+    
+      if spectrum2 is not None :
+        ax = fig.add_subplot(gs[1,1],polar=True)
+     
+        ax.set_theta_zero_location("N")
+        ax.set_theta_direction(-1)
+        cax = ax.contourf(Theta,R,spectrum2[i,:,:],30)
+        cb = fig.colorbar(cax)
+        ax.set_title('Directional spectrum '+labels2[i])
+
       st = plt.suptitle('Station '+sta,fontsize=16)
       fig.tight_layout()
       fig.savefig(sta+'_'+str(i)+'.png',bbox_inches='tight',bbox_extra_artists=(st,))
@@ -250,21 +290,30 @@ if __name__ == '__main__':
     lat = float(line.split('  ')[1])
     print sta
 
-    #if sta != '46042':
+    #if sta != '42039':
     #  continue
   
     # Read station data variables
     obs_data = read_station_data(sta,year,variables)
 
+    # Resolve differences in frequency bins across variables
     interpolate_station_data(obs_data,variables)
     
-    # Compute the spectrum from the data variables
-    spectrum, success = compute_spectrum(obs_data,variables,mode)
-  
-    # Plot the spectrum 
+    # Resolve differences in obervation dates across variables 
+    success = match_dates(obs_data,variables)
+
     if success:
-      if mode == 'average':
-        plot_station_spectrum(sta,lon,lat,['averaged over '+year],obs_data['freq'],obs_data['theta'],spectrum)  
+
+      # Compute the spectrum from the data variables
+      if mode == 'stats':
+        spectrum_avg = compute_spectrum(obs_data,variables,'average')
+        spectrum_max = compute_spectrum(obs_data,variables,'max')
+      if mode == 'individual':
+        spectrum = compute_spectrum(obs_data,variables,'individual')
+
+      # Plot the spectrum 
+      if mode == 'stats':
+        plot_station_spectrum(sta,lon,lat,obs_data['freq'],obs_data['theta'],spectrum_avg,['averaged over '+year],spectrum_max,['maximum over '+year])  
       elif mode == 'individual':
-        plot_station_spectrum(sta,lon,lat,obs_data['datetime'],obs_data['freq'],obs_data['theta'],spectrum)  
-        
+        plot_station_spectrum(sta,lon,lat,obs_data['freq'],obs_data['theta'],spectrum,obs_data['datetime'])  
+          
