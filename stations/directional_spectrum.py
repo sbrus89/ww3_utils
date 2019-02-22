@@ -50,6 +50,11 @@ def read_station_data(sta,year,variables):
 
 def interpolate_station_data(obs_data,variables):
 
+  # Fix inconsistancies between number of frequency bins and data
+  for var in variables:
+    nfreq = obs_data[var]['data'].shape[1]
+    obs_data[var]['freq'] = obs_data[var]['freq'][0:nfreq]
+
   # Check if number of frequency bins is different accross data variables
   nfreq = obs_data['swden']['freq'].size
   need_to_interpolate = False
@@ -63,39 +68,55 @@ def interpolate_station_data(obs_data,variables):
     return 
  
 
-  # Decide which frequency range to interpolate to
-  nfreq_min = 999
+  # Find coarsest frequency range to interpolate data to
   var_min = ''
+  nfreq_min = 999 
   for var in variables:
-    nfreq = obs_data[var]['freq'].size
     print var, nfreq
     if nfreq < nfreq_min:
-      nfreq_min = nfreq
       var_min = var
+      nfreq_min = nfreq
 
-  obs_data['freq'] = obs_data[var_min]['freq']
+  # Find min and max of frequency ranges 
+  freq_min = 999.0
+  freq_max = -999.0
+  for var in variables:
+    if var != var_min:
+      fmin = np.amin(obs_data[var]['freq'])
+      fmax = np.amax(obs_data[var]['freq'])
+      if fmin < freq_min:
+        freq_min = fmin
+      if fmax > freq_max:
+        freq_max = fmax
 
+  # Make sure frequency range used for interpolation is within other frequency ranges
+  data_mask, = np.where((obs_data[var_min]['freq'] >= freq_min) &  (obs_data[var_min]['freq'] <= freq_max))
+  obs_data['freq'] = obs_data[var_min]['freq'][data_mask]
+  print obs_data['freq']
+
+  # Interploate variables
   for var in variables:    
       print '  interpolating '+ var
+
+      # Handle degree interpolation
       if var.find('dir') > 0:
         data = np.rad2deg(np.unwrap(np.deg2rad(obs_data[var]['data'])))
       else:
         data = obs_data[var]['data']
-      print obs_data[var]['freq'].shape, data.shape
+      
+      # Create interpolation object
       f = interpolate.interp1d(obs_data[var]['freq'],data)     
-      interp_data = f(obs_data[var_min]['freq'])
 
+      # Perform interpolation
+      interp_data = f(obs_data['freq'])
+
+      # Handle degree interpolation
       if var.find('dir') > 0:
         interp_data = interp_data % 360
-      print obs_data[var]['data'].shape, interp_data.shape 
-      obs_data[var]['data'] = interp_data
-      obs_data[var]['freq'] = obs_data[var_min]['freq']
-      print obs_data[var]['data'].shape
 
-      
- 
-  
-    
+      # Store interpolated data
+      obs_data[var]['data'] = interp_data
+      obs_data[var]['freq'] = obs_data['freq']
 
 #######################################################################
 #######################################################################
