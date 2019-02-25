@@ -7,7 +7,7 @@ import pprint
 pwd = os.getcwd()
 
 # Input parameters
-year = '2005'
+year = '2018'
 run_start_date = '01-01'
 run_end_date   = '12-31'
 movement_tolerance = 0.1
@@ -89,6 +89,10 @@ for i,sta in enumerate(root):
 #print len(stations)
 
 
+#Ignore proxies (for use outside lab)
+#urllib2.getproxies = lambda: {}
+
+
 # Download station data and write to station list file
 f = open(pwd+'/stations.txt','w')
 for sta in stations:
@@ -112,10 +116,12 @@ for sta in stations:
       station_found = True
       for prod in data_product_ID[data_product]:
         try:
+          print '  checking '+ID+' '+prod[0]
           url = 'https://www.ndbc.noaa.gov/station_history.php?station='+ID
           data = urllib2.urlopen(url).read()
           if data.find(ID+prod[1]+year) < 0:
             all_data_exists = False
+            break
         except:
           station_found = False
 
@@ -143,7 +149,7 @@ for sta in stations:
         # Write to file
         if success:
           print data[0]
-          if data[0].find('YYYY MM DD hh mm') >= 0:
+          if data[0].find('YYYY MM DD hh mm') >= 0 or data[0].find('#YY  MM DD hh mm') >= 0:
 
             # Save station data file
             fd = open(ID+'_'+year+'_'+prod[0]+'.txt','w')
