@@ -7,8 +7,8 @@ import pprint
 
 mode = 'stats'
 #mode = 'individual'
-data_direc = 'spectral_data/'
-year = '2005'
+year = '2008'
+data_direc = 'spectral_data/'+year+'/'
 
 variables = ['swden','swdir','swdir2','swr1','swr2']
 
@@ -18,6 +18,7 @@ variables = ['swden','swdir','swdir2','swr1','swr2']
 def read_station_data(sta,year,variables):
 
   obs_data = {}
+  success = True
   for i,var in enumerate(variables):
     print '  reading '+var
 
@@ -39,11 +40,15 @@ def read_station_data(sta,year,variables):
       obs_data[var]['data'].append(line_sp[5:])
  
     # Convert observation data to numpy array
-    obs_data[var]['data'] = np.asarray(obs_data[var]['data'],dtype=np.float)            
+    try:
+      obs_data[var]['data'] = np.asarray(obs_data[var]['data'],dtype=np.float)            
+    except:
+      print '  data shape not correct'
+      success = False
     obs_data[var]['freq'] = np.asarray(obs_data[var]['freq'],dtype=np.float)
     
   
-  return obs_data
+  return obs_data,success
 
 #######################################################################
 #######################################################################
@@ -294,7 +299,9 @@ if __name__ == '__main__':
     #  continue
   
     # Read station data variables
-    obs_data = read_station_data(sta,year,variables)
+    obs_data,success = read_station_data(sta,year,variables)
+    if not success:
+      continue
 
     # Resolve differences in frequency bins across variables
     interpolate_station_data(obs_data,variables)
