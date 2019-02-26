@@ -7,7 +7,7 @@ import pprint
 
 mode = 'stats'
 #mode = 'individual'
-year = '2008'
+year = '2017'
 data_direc = 'spectral_data/'+year+'/'
 
 variables = ['swden','swdir','swdir2','swr1','swr2']
@@ -271,7 +271,7 @@ def plot_station_spectrum(sta,lon,lat,freq,theta,spectrum1,labels1,spectrum2=Non
 
       st = plt.suptitle('Station '+sta,fontsize=16)
       fig.tight_layout()
-      fig.savefig(sta+'_'+str(i)+'.png',bbox_inches='tight',bbox_extra_artists=(st,))
+      fig.savefig(sta+'_'+year+'_'+str(i)+'.png',bbox_inches='tight',bbox_extra_artists=(st,))
 
       plt.close()
 
