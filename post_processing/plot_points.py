@@ -255,11 +255,27 @@ def read_station_data(obs_file,min_date,max_date,variables):
 
 def output_time_to_date(output_time,ref_date):
 
-  # Convert output times to date format
   output_date = []
   output_datetime = []
-  for t in output_time:
-    date = ref_date + datetime.timedelta(days=t)
+
+  # Handle reference time
+  if 'start_date' in cfg:                                                              # start_time is used to create a common starting
+    start_date = datetime.datetime.strptime(cfg['start_date'],'%Y-%m-%d %H:%M:%S')     # point across runs that start from different initial
+    offset = -datetime.timedelta(days=output_time[0])                                  # dates i.e. E3SM 0001-01-01, WW3 2005-06-01
+  else:
+    start_date = ref_date
+    offset = datetime.timedelta(days=0)
+
+  # Convert output times to date format
+  for i,t in enumerate(output_time):
+    try:
+      date = start_date + datetime.timedelta(days=t) + offset
+    except:
+      print "likely datetime overflow error"
+      print "  try specifying start_date in the config file"
+      print "  if simulation started at something like 0001-01-01"
+      raise SystemExit(0)
+     
     output_date.append(date.strftime('%Y %m %d %H %M'))
     output_datetime.append(date)
   output_datetime = np.asarray(output_datetime,dtype='O')
