@@ -3,23 +3,25 @@ import subprocess
 #--------------------
 # Request parameters
 #--------------------
-data = 'pressure'
-start_date = '2012-10-01 00:00'
-end_date   = '2012-12-01 00:00'
-data_set   = 'CFSRv2 hourly'
+data = 'wind'
+start_date = '1984-01-01 00:00'
+end_date   = '1985-01-01 00:00'
+data_set   = 'CFSR hourly'
 region_box = ['-180','180','-90','90']
 
 if data == 'wind':
   parameters = ['uwind','vwind']
-  products   = ['1 hr forecast',
-                '2 hr forecast',
-                '3 hr forecast',
-                '4 hr forecast',
-                '5 hr forecast',
-                '6 hr forecast']
+  #products   = ['1 hr forecast',
+  #              '2 hr forecast',
+  #              '3 hr forecast',
+  #              '4 hr forecast',
+  #              '5 hr forecast',
+  #              '6 hr forecast']
+  products = ['6 hr forecast']
   levels     = ['specified height above ground: 10m']
   #grids      = ['0.5x0.5 (720x361)']
-  grids      = ['0.205x0.204']
+  #grids      = ['0.205x0.204']
+  grids = ['1.875x1.904']
 elif data == 'currents':
   parameters = ['ucurrent','vcurrent']
   products   = ['1 hr average (initial+0 to initial+1)',
@@ -47,7 +49,7 @@ elif data == 'pressure':
                 '3 hr forecast',
                 '4 hr forecast',
                 '5 hr forecast',
-                '6 hr forecast']
+                'Analysis']
   levels = ['mean sea level']
   grids = ['0.5x0.5 (720x361)'] 
 
@@ -73,7 +75,8 @@ product_codes   = {'6 hr forecast':'3',
                    '1 hr average (initial+2 to initial+3)':'946',
                    '1 hr average (initial+3 to initial+4)':'947',
                    '1 hr average (initial+4 to initial+5)':'948',
-                   '1 hr average (initial+5 to initial+6)':'949'}
+                   '1 hr average (initial+5 to initial+6)':'949',
+                   'Analysis':'1'}
 grid_codes      = {'0.205x0.204'       :'68', # 0.205 x ~0.204 from 0E to 359.795E and 89.844N to 89.844S (1760 x 880 Longitude/Gaussian Latitude)
                    '0.312x0.312'       :'83',
                    '0.5x0.5 (720x361)' :'57',
@@ -88,7 +91,7 @@ level_codes     = {'specified height above ground: 10m':'223',
 #----------------
 # Log in command
 #----------------
-command = ['curl','-c','rda_auth_cookies','-d','"email=sbrus@nd.edu&passwd=irishswimming&action=login"','https://rda.ucar.edu/cgi-bin/login']
+command = ['curl','-c','rda_auth_cookies','-d','"email=sbrus@lanl.gov&passwd=Irishswimming1*cu&action=login"','https://rda.ucar.edu/cgi-bin/login']
 subprocess.call(command)
 
 #----------------------
