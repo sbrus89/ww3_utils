@@ -7,7 +7,7 @@ import pprint
 
 mode = 'stats'
 #mode = 'individual'
-year = '2017'
+year = '2003'
 data_direc = 'spectral_data/'+year+'/'
 
 variables = ['swden','swdir','swdir2','swr1','swr2']
@@ -29,15 +29,19 @@ def read_station_data(sta,year,variables):
     # Get the fequency data and initialize time list
     obs_data[var] = {}
     obs_data[var]['data'] = []
-    obs_data[var]['freq'] = obs[0].strip().split()[5:]
+    if obs[0].find('mm') > 0:   # Adjust for different date formats
+      n = 5                     # YYYY MM DD hh mm
+    else:                       #      vs.
+      n = 4                     # YYYY MM DD hh
+    obs_data[var]['freq'] = obs[0].strip().split()[n:]
     obs_data[var]['datetime'] = []
 
     # Get the spectral variable data
     for j,line in enumerate(obs[1:]):
       line_sp = line.split()
 
-      obs_data[var]['datetime'].append(' '.join(line_sp[0:5]))
-      obs_data[var]['data'].append(line_sp[5:])
+      obs_data[var]['datetime'].append(' '.join(line_sp[0:n]))
+      obs_data[var]['data'].append(line_sp[n:])
  
     # Convert observation data to numpy array
     try:
