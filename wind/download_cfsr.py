@@ -3,25 +3,22 @@ import subprocess
 #--------------------
 # Request parameters
 #--------------------
-data = 'wind'
-start_date = '1984-01-01 00:00'
-end_date   = '1985-01-01 00:00'
+data = 'ice'
+start_date = '1999-01-01 00:00'
+end_date   = '2000-01-01 00:00'
 data_set   = 'CFSR hourly'
 region_box = ['-180','180','-90','90']
 
 if data == 'wind':
   parameters = ['uwind','vwind']
-  #products   = ['1 hr forecast',
-  #              '2 hr forecast',
-  #              '3 hr forecast',
-  #              '4 hr forecast',
-  #              '5 hr forecast',
-  #              '6 hr forecast']
-  products = ['6 hr forecast']
+  products   = ['1 hr forecast',
+                '2 hr forecast',
+                '3 hr forecast',
+                '4 hr forecast',
+                '5 hr forecast',
+                '6 hr forecast']
   levels     = ['specified height above ground: 10m']
-  #grids      = ['0.5x0.5 (720x361)']
-  #grids      = ['0.205x0.204']
-  grids = ['1.875x1.904']
+  grids      = ['0.5x0.5 (720x361)']
 elif data == 'currents':
   parameters = ['ucurrent','vcurrent']
   products   = ['1 hr average (initial+0 to initial+1)',
@@ -52,6 +49,12 @@ elif data == 'pressure':
                 'Analysis']
   levels = ['mean sea level']
   grids = ['0.5x0.5 (720x361)'] 
+elif data == 'ice':
+  parameters = ['ice coverage']
+  products   = ['6 hr forecast']
+  levels = ['ground or water surface']
+  grids = ['0.312x0.312'] 
+
 
 #------------------------
 # Request paramter codes
@@ -63,7 +66,8 @@ parameter_codes = {'uwind'        :'3%217-0.2-1:0.2.2',
                    'ucurrent'     :'3%217-4.2-1:10.1.2',
                    'vcurrent'     :'3%217-4.2-1:10.1.3',
                    'ssh'          :'3%217-4.2-1:10.3.195',
-                   'pressure'     :'3%217-0.2-1:0.3.1'}
+                   'pressure'     :'3%217-0.2-1:0.3.1',
+                   'ice coverage' :'3%217-0.2-1:10.2.0'}
 product_codes   = {'6 hr forecast':'3',
                    '3 hr forecast':'119',
                    '1 hr forecast':'486',
