@@ -10,51 +10,50 @@ import yaml
 import pprint
 import argparse
 import time
+import datetime
 
 
 
 
-def get_date_ranges(year,month,days_per_run):
+def get_date_ranges(date_start,date_end,days_per_run):
 
-  days_in_month = calendar.monthrange(year,month)[1]
-  
   date_range = []
   restart_interval = []
-  date_range_start = 1
+  date_run_start = datetime.datetime.strptime(date_start,'%m/%d/%Y')
+  date_run_end = datetime.datetime.strptime(date_end,'%m/%d/%Y')
+  run_length = datetime.timedelta(days=days_per_run) 
   keep_going = True
 
+  date_range_start = date_run_start
   while keep_going:
  
     # Keep track date ranges 
-    date_range_end = date_range_start + days_per_run
-  
-    # Format dates 
-    date1 = str(date_range_start).zfill(2)
-    date2 = str(date_range_end).zfill(2)
-    month1 = str(month).zfill(2)
-    month2 = month1
+    date_range_end = date_range_start + run_length
 
-    # Handle the last date range (ends at beginning of the first day of the next month) 
-    if date_range_end > days_in_month:
-      month2 = str(month + 1).zfill(2)
-      date2 = '01'  
-      date_range_end = days_in_month+1
+    # Handle the last date range 
+    if date_range_end > date_run_end:
+      date_range_end = date_run_end 
       keep_going = False
 
+    # Format dates
+    date1 = datetime.datetime.strftime(date_range_start, '%Y%m%d')
+    date2 = datetime.datetime.strftime(date_range_end,   '%Y%m%d')
+
     # Add date range to list
-    date_range.append([str(year)+month1+date1 + ' 000000', 
-                       str(year)+month2+date2 + ' 000000'])
-    restart_interval.append(date_range_end-date_range_start)
+    date_range.append([date1 + ' 000000', 
+                       date2 + ' 000000'])
+    delta = date_range_end-date_range_start
+    restart_interval.append(delta.days)
   
    # Update for next iteration
     date_range_start = date_range_end
   
   
-  print days_in_month
   pprint.pprint(date_range)
   pprint.pprint(restart_interval)
 
-  if sum(restart_interval) != days_in_month:
+  run_range = date_run_end - date_run_start
+  if sum(restart_interval) != run_range.days:
     print "Error in date ranges"
 
   return date_range,restart_interval
@@ -91,7 +90,7 @@ if __name__ == '__main__':
     run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
   if run_strt == 'y':
     subprocess.call(['python','ww3_strt.py'])
-    subprocess.call([pwd+'/ww3_strt'])
+    subprocess.call(['srun','-n','4',pwd+'/ww3_strt'])
 
   # Set forcings to default vaules if not present in config file
   if 'wind' not in cfg:
@@ -102,6 +101,10 @@ if __name__ == '__main__':
     cfg['currents'] = 'F'
   if 'ssh' not in cfg:
     cfg['ssh'] = 'F'
+  if 'ice' not in cfg:
+    cfg['ice'] = 'F'
+  if 'icebergs' not in cfg:
+    cfg['icebergs'] = 'F'
 
   # Determine which forcings are requested
   forcings = []
@@ -111,8 +114,12 @@ if __name__ == '__main__':
     forcings.append('currents')
   if cfg['ssh'] == 'T':
     forcings.append('ssh')
+  if cfg['ice'] == 'T':
+    forcings.append('ice')
+  if cfg['icebergs'] == 'T':
+    forcings.append('icebergs')
    
-  ww3_files = {'wind':'wind.ww3','currents':'current.ww3','ssh':'level.ww3'}
+  ww3_files = {'wind':'wind.ww3','currents':'current.ww3','ssh':'level.ww3','ice':'ice.ww3'}
 
   # Create ww3_prnc.inp, link correct data file, and run ww3_prnc
   for forcing in forcings:
@@ -131,11 +138,10 @@ if __name__ == '__main__':
           rm_config = True
 
         subprocess.call(['python','ww3_prnc.py'])
-        month_name = calendar.month_name[cfg["month"]].lower()
-        direc = cfg[forcing+"_direc"]+month_name+'/'
+        direc = cfg[forcing+"_direc"]
         ncfile = glob.glob(direc+'*ww3.nc')[0]
         subprocess.call(['ln','-sf',ncfile,forcing+'.nc'])
-        subprocess.call([pwd+'/ww3_prnc'])
+        subprocess.call(['srun','-n','36',pwd+'/ww3_prnc'])
         if rm_config:
           subprocess.call(['rm','ww3_prnc.config'])     
 
@@ -147,17 +153,20 @@ if __name__ == '__main__':
     lines = open(pwd+'/ww3_shel.config').read().splitlines()
     for i,line in enumerate(lines):
       if line and line.split()[0] == 'start_time':
-         lines[i] = "start_time     : '"+str(cfg["year"])+str(cfg["month"]).zfill(2)+"01 000000'"
+         start_time = datetime.datetime.strptime(cfg["date_start"],'%m/%d/%Y')
+         lines[i] = "start_time     : '"+datetime.datetime.strftime(start_time,'%m%d%Y')+" 000000'"
       if line and line.split()[0] == 'end_time':
-         lines[i] = "end_time       : '"+str(cfg["year"])+str(cfg["month"]+1).zfill(2)+"01 000000'"
+         end_time = datetime.datetime.strptime(cfg["date_end"],'%m/%d/%Y')
+         lines[i] = "end_time       : '"+datetime.datetime.strftime(end_time,'%m%d%Y')+" 000000'"
     f = open(pwd+'/ww3_shel.config','w')
     f.write('\n'.join(lines))
     f.close()
     subprocess.call(['python','ww3_shel.py'])
 
+  # Get the start and end dates for each run
+  date_range,restart_interval = get_date_ranges(cfg["date_start"],cfg["date_end"],cfg["days_per_run"])
 
-  date_range,restart_interval = get_date_ranges(cfg["year"],cfg["month"],cfg["days_per_run"])
-
+  # Setup the submission scripts for the series of runs
   for i in range(len(date_range)):
     start = date_range[i][0]
     end = date_range[i][1]
