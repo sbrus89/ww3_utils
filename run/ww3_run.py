@@ -154,10 +154,10 @@ if __name__ == '__main__':
     for i,line in enumerate(lines):
       if line and line.split()[0] == 'start_time':
          start_time = datetime.datetime.strptime(cfg["date_start"],'%m/%d/%Y')
-         lines[i] = "start_time     : '"+datetime.datetime.strftime(start_time,'%m%d%Y')+" 000000'"
+         lines[i] = "start_time     : '"+datetime.datetime.strftime(start_time,'%Y%m%d')+" 000000'"
       if line and line.split()[0] == 'end_time':
          end_time = datetime.datetime.strptime(cfg["date_end"],'%m/%d/%Y')
-         lines[i] = "end_time       : '"+datetime.datetime.strftime(end_time,'%m%d%Y')+" 000000'"
+         lines[i] = "end_time       : '"+datetime.datetime.strftime(end_time,'%Y%m%d')+" 000000'"
     f = open(pwd+'/ww3_shel.config','w')
     f.write('\n'.join(lines))
     f.close()
