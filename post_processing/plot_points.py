@@ -17,7 +17,8 @@ np.set_printoptions(threshold=np.nan)
 #--------------------------
 # Define variables to plot
 #--------------------------
-variables = {'hs'  :{'obs_col' : 8,
+variables = {
+            'hs'  :{'obs_col' : 8,
                      'fill_val': 99.00,
                      'recip'   : False,
                      'label'   : 'Significant wave height',
@@ -46,7 +47,14 @@ variables = {'hs'  :{'obs_col' : 8,
                        'recip'   : False,
                        'label'   : 'Wind direction',
                        'units'   : 'deg',
-                       'aka'     : ['uwnd','vwnd']}}
+                       'aka'     : ['uwnd','vwnd']},
+             #'ssh  ':{'obs_col' : 5,
+             #          'fill_val': 99.0,
+             #          'recip'   : False,
+             #          'label'   : 'Water Level',
+             #          'units'   : 'm',
+             #          'aka'     : ['SSH']}
+              }
 
 ################################################################################################
 ################################################################################################
@@ -96,21 +104,7 @@ def read_point_files(data_files,variables):
 
 def interpolate_stations_from_fields(data_files,variables,station_file):
 
-  # Read in stations names and location
-  f = open(station_file)
-  lines = f.read().splitlines()
-  stations = {}
-  stations['name'] = []
-  stations['lon'] = []
-  stations['lat'] = []
-  for sta in lines:
-    val = sta.split()
-    stations['name'].append(val[2].strip("'"))
-    stations['lon'].append(float(val[0]))
-    stations['lat'].append(float(val[1]))
-  nstations = len(stations['name'])
-  stations['lon'] = np.asarray(stations['lon'])
-  stations['lat'] = np.asarray(stations['lat'])
+  stations = read_station_file(station_file)
   sta_pts = np.column_stack((stations['lon'],stations['lat']))
 
   t = 0.0
@@ -216,6 +210,29 @@ def read_field(nc_file,var):
 ################################################################################################
 ################################################################################################
 
+def read_station_file(station_file):
+
+  # Read in stations names and location
+  f = open(station_file)
+  lines = f.read().splitlines()
+  stations = {}
+  stations['name'] = []
+  stations['lon'] = []
+  stations['lat'] = []
+  for sta in lines:
+    val = sta.split()
+    stations['name'].append(val[2].strip("'"))
+    stations['lon'].append(float(val[0]))
+    stations['lat'].append(float(val[1]))
+  nstations = len(stations['name'])
+  stations['lon'] = np.asarray(stations['lon'])
+  stations['lat'] = np.asarray(stations['lat'])
+
+  return stations 
+
+################################################################################################
+################################################################################################
+
 def read_station_data(obs_file,min_date,max_date,variables):
 
   frmt = '%Y %m %d %H %M'
@@ -230,6 +247,8 @@ def read_station_data(obs_file,min_date,max_date,variables):
   f = open(obs_file)
   obs = f.read().splitlines()
   for line in obs[1:]:
+    if line.find('#') >= 0:
+      continue
     date = line[0:16]
     date_time = datetime.datetime.strptime(date,frmt)
     if date_time >= datetime.datetime.strptime(min_date,frmt) and \
@@ -315,31 +334,39 @@ if __name__ == '__main__':
   #-----------------------------------
   data = {}
   stations = {}
-  for k,run in enumerate(runs):
-    data_files = runs[run]
-    if field[run]:
-      data[run],stations[run] = interpolate_stations_from_fields(data_files,variables,cfg["station_file"]) 
-    else:
-      data[run],stations[run] = read_point_files(data_files,variables)  
-  
-  # Get list of all stations
-  station_list = [] 
-  for run in stations:
-    for sta in stations[run]['name']:
-      station_list.append(sta)
-  station_list = list(set(station_list))
-
-  # Find overall date range of data
-  date_min = '3000 01 01 00 00'
-  date_max = '1000 01 01 00 00'
-  frmt = '%Y %m %d %H %M'
-  for run in data:
-    if data[run]['datetime'][0]  < datetime.datetime.strptime(date_min,frmt):
-      date_min = data[run]['date'][0]
-    if data[run]['datetime'][-1] > datetime.datetime.strptime(date_max,frmt):
-      date_max = data[run]['date'][-1]
-  print date_min,date_max
+  if len(runs) > 0:
+    for k,run in enumerate(runs):
+      data_files = runs[run]
+      if field[run]:
+        data[run],stations[run] = interpolate_stations_from_fields(data_files,variables,cfg["station_file"]) 
+      else:
+        data[run],stations[run] = read_point_files(data_files,variables)  
     
+    # Get list of all stations
+    station_list = [] 
+    for run in stations:
+      for sta in stations[run]['name']:
+        station_list.append(sta)
+    station_list = list(set(station_list))
+
+    # Find overall date range of data
+    date_min = '3000 01 01 00 00'
+    date_max = '1000 01 01 00 00'
+    frmt = '%Y %m %d %H %M'
+    for run in data:
+      if data[run]['datetime'][0]  < datetime.datetime.strptime(date_min,frmt):
+        date_min = data[run]['date'][0]
+      if data[run]['datetime'][-1] > datetime.datetime.strptime(date_max,frmt):
+        date_max = data[run]['date'][-1]
+    print date_min,date_max
+  else:
+    stations["stations_only"] = read_station_file(cfg["station_file"])
+    station_list = []
+    for sta in stations["stations_only"]["name"]:
+      station_list.append(sta) 
+   
+    date_min = cfg["date_min"] 
+    date_max = cfg["date_max"] 
     
   #-------------------------------------------------
   # Read observation data and plot for each station
@@ -347,14 +374,24 @@ if __name__ == '__main__':
   for i,sta in enumerate(station_list):
     print sta
   
-  
+    # Check if observation file exists
+    obs_file = ""
+    obs_file_check = cfg['obs_direc']+sta+'_'+cfg['year']+'.txt'
+    if os.path.isfile(obs_file_check):
+      obs_file = obs_file_check
+    
+    obs_file_check = cfg['obs_direc']+sta+'_'+cfg['year']+'_stdmet.txt'
+    if os.path.isfile(obs_file_check):
+      obs_file = obs_file_check
+
+    print obs_file
+
     # Get data from observation file at output times
-    obs_file = cfg['obs_direc']+sta+'_'+cfg['year']+'.txt'
-    if os.path.isfile(obs_file):
+    if obs_file:      
       obs_data = read_station_data(obs_file,date_min,date_max,variables)
         
       # Create figure 
-      fig = plt.figure(figsize=[6,12])
+      fig = plt.figure(figsize=[6,2+2*len(variables)])
       gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
      
       # Find station location 
@@ -386,10 +423,13 @@ if __name__ == '__main__':
         print '  '+var
         lines = []
         labels = []
+        data_plotted = False
         ax = fig.add_subplot(gs[k+1,:])
-        l1, = ax.plot(obs_data['datetime'],obs_data[var])
-        lines.append(l1)
-        labels.append('Observed')
+        if np.size(obs_data['datetime']) > 0:
+          l1, = ax.plot(obs_data['datetime'],obs_data[var])
+          lines.append(l1)
+          labels.append('Observed')
+          data_plotted = True
         for run in data:
           if sta in stations[run]['name']:
             ind = stations[run]['name'].index(sta)
@@ -398,11 +438,14 @@ if __name__ == '__main__':
             l2, = ax.plot(data[run]['datetime'],data[run][var][:,ind])
             lines.append(l2)
             labels.append(run)
+            data_plotted = True
         ax.set_title(variables[var]['label'])
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        if data_plotted:
+          ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
         #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
         ax.set_xlabel('time')
         ax.set_ylabel(var)
+        print ax.get_xlim()
         if variables[var]['units'] == 'deg':
           ax.set_ylim([0.0,360.0])          
         if ax.get_xlim() == (-0.001, 0.001): # Detect when there is no availiable data
