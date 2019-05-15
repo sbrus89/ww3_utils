@@ -49,7 +49,7 @@ tasks = [{'cmd':'mv', 'files':'log*',       'dest':'results/model_output/log_fil
          {'cmd':'mv', 'files':'ww3_*.o*',   'dest':'results/model_output/screen_output'},
          {'cmd':'mv', 'files':'ww3_*.e*',   'dest':'results/model_output/screen_output'},
          {'cmd':'mv', 'files':first_restart,'dest':'results/model_output/restarts'},
-         {'cmd':'mv', 'files':'*.sub',      'dest':'results/subission_scripts'},
+         {'cmd':'mv', 'files':'*.sub',      'dest':'results/submission_scripts'},
          {'cmd':'rm', 'files':other_restarts}]
 
 
