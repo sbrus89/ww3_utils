@@ -17,11 +17,12 @@ def write_ww3_ounp_inp():
   f.write('$ WAVEWATCH III NETCDF Point output post-processing                    $\n')
   f.write('$ -------------------------------------------------------------------- $\n')
   f.write('$\n')
+  f.write('$ start date, increment, number of outputs\n')
   f.write('   '+'  '.join([cfg['first_output_time'],cfg['increment'],cfg['number_of_outputs']])+'\n')
   f.write('$\n')
   f.write('$ Points requested --------------------------------------------------- $\n')
   for point in cfg['points_requested']:
-    f.write('   '+point+'\n')
+    f.write('   '+str(point)+'\n')
   f.write('$ mandatory end of list\n')
   f.write('-1\n')
   f.write('$\n')

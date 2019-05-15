@@ -13,17 +13,15 @@ out_types = [{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters
 ###################################################################################################
 ###################################################################################################
 
-def replace_ww3_ounp_inp_line(nline,opt1,opt2=None):
+def replace_ww3_ounp_inp_line(comment,opt1,opt2=None):
 
   # Find the requested line (nline) in the ww3_ounp input file
   founp = open(pwd+'/ww3_ounp.inp','r')
   lines = founp.read().splitlines()
-  line_count = 0
   for n,line in enumerate(lines):
-    if line.strip()[0] != '$':
-      line_count = line_count + 1
-    if line_count == nline:
+    if line.find(comment) > 0:
       break
+  n = n+1
   
   # Replace the line with the new information (opt1 and opt2) 
   line_info = lines[n].split()
@@ -70,14 +68,14 @@ if __name__ == '__main__':
     print start_date,start_time
   
     # Replace the time information line
-    replace_ww3_ounp_inp_line(1,start_date,start_time)
+    replace_ww3_ounp_inp_line('start date',start_date,start_time)
 
     for otype in out_types:
       
       # Replace the output type information lines
-      replace_ww3_ounp_inp_line(3 ,otype['prefix'])
-      replace_ww3_ounp_inp_line(7 ,otype['type'])
-      replace_ww3_ounp_inp_line(10,otype['subtype'])
+      replace_ww3_ounp_inp_line('file prefix' ,otype['prefix'])
+      replace_ww3_ounp_inp_line('output type' ,otype['type'])
+      replace_ww3_ounp_inp_line('sub-type',otype['subtype'])
   
       # Run the ww3_ounp program
       subprocess.call(['srun','-n','4',pwd+'/ww3_ounp'])
