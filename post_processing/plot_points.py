@@ -235,27 +235,41 @@ def read_station_file(station_file):
 
 def read_station_data(obs_file,min_date,max_date,variables):
 
-  frmt = '%Y %m %d %H %M'
-
   # Initialize variable for observation data
   obs_data = {}
   for var in variables:
     obs_data[var] = []  
   obs_data['datetime'] = []
-
-  # Get data from observation file between min and max output times
+ 
+  # Open the observation file
   f = open(obs_file)
   obs = f.read().splitlines()
+
+  # Determine file format
+  frmt = '%Y %m %d %H %M'
+  if obs[0].find('YYYY MM DD hh mm') >= 0:
+    obs_frmt = '%Y %m %d %H %M'
+    col_offset = 0
+    date_length = 16
+  elif  obs[0].find('YYYY MM DD hh WD') >= 0:
+    obs_frmt = '%Y %m %d %H'
+    col_offset = -1
+    date_length = 13
+  else:
+    print 'problem with observed data format'
+    raise SystemExit(0)
+   
+  # Get data from observation file between min and max output times
   for line in obs[1:]:
     if line.find('#') >= 0:
       continue
-    date = line[0:16]
-    date_time = datetime.datetime.strptime(date,frmt)
+    date = line[0:date_length]
+    date_time = datetime.datetime.strptime(date,obs_frmt)
     if date_time >= datetime.datetime.strptime(min_date,frmt) and \
        date_time <= datetime.datetime.strptime(max_date,frmt):
       obs_data['datetime'].append(date_time)
       for var in variables:
-        col = variables[var]['obs_col']
+        col = variables[var]['obs_col'] + col_offset
         obs_data[var].append(line.split()[col])
 
   # Convert observation data and replace fill values with nan
@@ -384,10 +398,13 @@ if __name__ == '__main__':
     if os.path.isfile(obs_file_check):
       obs_file = obs_file_check
 
-    print obs_file
 
     # Get data from observation file at output times
-    if obs_file:      
+
+    if not obs_file:      
+      print '  no observation file found'
+    else:
+      print '  '+obs_file
       obs_data = read_station_data(obs_file,date_min,date_max,variables)
         
       # Create figure 
@@ -445,7 +462,7 @@ if __name__ == '__main__':
         #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
         ax.set_xlabel('time')
         ax.set_ylabel(var)
-        print ax.get_xlim()
+        #print ax.get_xlim()
         if variables[var]['units'] == 'deg':
           ax.set_ylim([0.0,360.0])          
         if ax.get_xlim() == (-0.001, 0.001): # Detect when there is no availiable data
