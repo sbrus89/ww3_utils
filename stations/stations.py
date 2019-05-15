@@ -7,11 +7,12 @@ import pprint
 pwd = os.getcwd()
 
 # Input parameters
-year = '1996'
-run_start_date = '01-01'
+year = '2012'
+run_start_date = '10-01'
 run_end_date   = '12-31'
 movement_tolerance = 0.1
-data_product = 'spectral wave'
+lonlat_box = [-80.0,-65.0,25.0,45.0]
+data_product = 'standard meterological'
 
 data_product_ID = {'standard meterological':[['stdmet','h']],
                    'spectral wave':[['swden','w'],['swdir','d'],['swdir2','i'],['swr1','j'],['swr2','k']]}
@@ -51,8 +52,14 @@ for i,sta in enumerate(root):
       sta_start = datetime.datetime.strptime(sta_start_date,datetime_frmt)
       sta_end = datetime.datetime.strptime(sta_end_date,datetime_frmt)
 
+      # Determine if stations is inside lon/lat box:w
+
+      inside_box = False
+      if float(lon) >= lonlat_box[0] and float(lon) <= lonlat_box[1] and float(lat) >= lonlat_box[2] and float(lat) <= lonlat_box[3]:
+        inside_box = True
+
       # Determine if station has data in the date range for the run
-      if (run_start <= sta_end and run_end > sta_start) and (met == 'y'):
+      if (run_start <= sta_end and run_end > sta_start) and (met == 'y') and inside_box:
         if ID not in stations:
           stations[ID] = {}
           stations[ID]['owner'] = owner
