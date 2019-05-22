@@ -57,7 +57,7 @@ for task in tasks:
 
   # Create destination directory, if necessary
   if 'dest' in task:
-    dest_direc = pwd+'/'+year+'/'+task['dest']
+    dest_direc = pwd+'/'+task['dest']
     if not os.path.exists(dest_direc):
       subprocess.call(['mkdir','-p',dest_direc])
 
