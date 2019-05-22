@@ -42,7 +42,10 @@ def write_ww3_ounp_inp():
   f.write('$ flag for dimensions order\n')
   f.write('   '+cfg['dimensions_order']+'\n')
   f.write('$ sub-type\n')
-  f.write('   '+cfg['sub_type']+'\n')
+  if cfg['output_type'] == '2':
+    f.write('   '+cfg['sub_type']+'\n')
+  elif cfg['output_type'] == '1':
+    f.write('   '+cfg['sub_type']+' -1 1\n') # Turn off 1-D spectrum
   f.write('$ -------------------------------------------------------------------- $\n')
   f.write('$ End of input file                                                    $\n')
   f.write('$ -------------------------------------------------------------------- $\n')

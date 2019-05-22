@@ -7,9 +7,9 @@ import pprint
 pwd = os.getcwd()
 
 # Output type options
-out_types = [{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
-             {'type':'2','prefix':'cfsr.','subtype':'1'}] # depth, current, wind
-
+out_types = {'wave':{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
+             'met': {'type':'2','prefix':'cfsr.','subtype':'1'}, # depth, current, wind
+             'spec':{'type':'1','prefix':'spec.','subtype':'3'}} 
 ###################################################################################################
 ###################################################################################################
 
@@ -70,7 +70,9 @@ if __name__ == '__main__':
     # Replace the time information line
     replace_ww3_ounp_inp_line('start date',start_date,start_time)
 
-    for otype in out_types:
+    for out_type in cfg['out_types']:
+
+      otype = out_types[out_type]
       
       # Replace the output type information lines
       replace_ww3_ounp_inp_line('file prefix' ,otype['prefix'])
