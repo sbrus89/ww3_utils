@@ -4,11 +4,18 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.basemap import Basemap
 from scipy import interpolate
 import pprint
+import glob
+import netCDF4
+import datetime
+import os
+plt.switch_backend('agg')
 
-mode = 'stats'
+mode = 'validation'
+#mode = 'stats'
 #mode = 'individual'
-year = '2003'
-data_direc = 'spectral_data/'+year+'/'
+year = '1999'
+data_direc = '../../../observed_data/spectrum/'
+run_direc = '../../model_data/spectrum/'
 
 variables = ['swden','swdir','swdir2','swr1','swr2']
 
@@ -23,7 +30,12 @@ def read_station_data(sta,year,variables):
     print '  reading '+var
 
     # Open station data file
-    f = open(data_direc+sta+'_'+year+'_'+var+'.txt','r')
+    filename = data_direc+sta+'_'+year+'_'+var+'.txt' 
+    if not os.path.exists(filename):
+      success = False
+      break 
+
+    f = open(filename,'r')
     obs = f.read().splitlines()
   
     # Get the fequency data and initialize time list
@@ -53,6 +65,78 @@ def read_station_data(sta,year,variables):
     
   
   return obs_data,success
+
+#######################################################################
+#######################################################################
+
+def read_model_data(files,mode=None):
+  
+  for i,name in enumerate(files):
+    print name.split('/')[-1]
+
+    nc_file = netCDF4.Dataset(name,'r')
+
+    # Initializations for first iteration of run
+    if i == 0:
+        # Station information
+        stations = {}
+        stations['name'] = netCDF4.chartostring(nc_file.variables['station_name'][:,:]).tolist()
+        stations['lon'] = np.squeeze(nc_file.variables['longitude'][:])
+        stations['lat'] = np.squeeze(nc_file.variables['latitude'][:])
+        nstations = len(stations['name'])
+
+        # Model output data (nfiles = number of timesnaps, 1 timesnap per file)
+        nfiles = len(files)
+        data = {}
+        data['freq'] = nc_file.variables['frequency'][:] 
+        data['theta'] = nc_file.variables['direction'][:]
+        theta_ind = np.argsort(data['theta'])
+        data['theta'] = data['theta'][theta_ind]
+        nfreq = len(data['freq'])
+        ntheta = len(data['theta'])
+        if mode == 'average':
+          data['spectrum'] = np.zeros((1,nstations,nfreq,ntheta))
+        else:
+          data['spectrum'] = np.zeros((nfiles,nstations,nfreq,ntheta))
+
+        # Time information
+        data['time'] = np.empty(nfiles)
+        data['ref_date'] = nc_file.variables['time'].getncattr('units').replace('days since ','')
+        data['ref_date'] = datetime.datetime.strptime(data['ref_date'],'%Y-%m-%d %H:%M:%S')
+
+    # Get time and output variables
+    if i == 0:
+      data['time'] = nc_file.variables['time'][:]
+    if mode == 'average':
+      data['spectrum'][0,:,:,:] = data['spectrum'][0,:,:,:] + nc_file.variables['efth'][0,:,:,theta_ind]
+      #data['spectrum'][0,:,:,:] = data['spectrum'][0,:,:,:] + nc_file.variables['efth'][0,:,:,:]
+    else:
+      data['spectrum'][i,:,:,:] = nc_file.variables['efth'][0,:,:,theta_ind]
+
+  if mode == 'average':
+    data['spectrum'] = data['spectrum']/float(nfiles)
+
+  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
+
+  return data, stations
+
+################################################################################################
+################################################################################################
+
+def output_time_to_date(output_time,ref_date):
+
+  output_date = []
+  output_datetime = []
+
+  # Convert output times to date format
+  for i,t in enumerate(output_time):
+    date = ref_date + datetime.timedelta(days=t) 
+
+    output_date.append(date.strftime('%Y %m %d %H %M'))
+    output_datetime.append(date)
+  output_datetime = np.asarray(output_datetime,dtype='O')
+
+  return output_datetime, output_date 
 
 #######################################################################
 #######################################################################
@@ -220,13 +304,16 @@ def compute_spectrum(obs_data,variables,mode='average'):
 #######################################################################
 #######################################################################
 
-def plot_station_spectrum(sta,lon,lat,freq,theta,spectrum1,labels1,spectrum2=None,labels2=None):
+def plot_station_spectrum(sta,lon,lat,freq1,theta1,spectrum1,labels1,freq2=[],theta2=[],spectrum2=None,labels2=None):
 
   print '  plotting spectrum'
 
   nsnaps = len(labels1)
 
-  R,Theta = np.meshgrid(freq,theta)
+  R1,Theta1 = np.meshgrid(freq1,theta1)
+  if len(freq2) > 0 :
+    R2,Theta2 = np.meshgrid(freq2,theta2)
+  
 
   for i in range(nsnaps):
 
@@ -260,7 +347,7 @@ def plot_station_spectrum(sta,lon,lat,freq,theta,spectrum1,labels1,spectrum2=Non
 
       ax.set_theta_zero_location("N")
       ax.set_theta_direction(-1)
-      cax = ax.contourf(Theta,R,spectrum1[i,:,:],30)
+      cax = ax.contourf(Theta1,R1,spectrum1[i,:,:],30)
       cb = fig.colorbar(cax)
       ax.set_title('Directional spectrum '+labels1[i])
     
@@ -269,7 +356,15 @@ def plot_station_spectrum(sta,lon,lat,freq,theta,spectrum1,labels1,spectrum2=Non
      
         ax.set_theta_zero_location("N")
         ax.set_theta_direction(-1)
-        cax = ax.contourf(Theta,R,spectrum2[i,:,:],30)
+        #cax = ax.tricontourf(Theta2.ravel(),R2.ravel(),spectrum2[i,:,:].ravel(),30)
+        #cax = ax.contourf(Theta2,R2,spectrum2[i,:,:],30)
+
+        interp = interpolate.RegularGridInterpolator((theta2, freq2), spectrum2[i,:,:], bounds_error=False, fill_value=np.nan)
+        pts = np.vstack((Theta1.ravel(),R1.ravel())).T
+        spec2 = interp(pts)
+        spec2 = np.reshape(spec2,Theta1.shape)
+
+        cax = ax.contourf(Theta1,R1,spec2,30)
         cb = fig.colorbar(cax)
         ax.set_title('Directional spectrum '+labels2[i])
 
@@ -279,28 +374,53 @@ def plot_station_spectrum(sta,lon,lat,freq,theta,spectrum1,labels1,spectrum2=Non
 
       plt.close()
 
+################################################################################################
+################################################################################################
+
+def read_station_file(station_file):
+
+  # Read in stations names and location
+  f = open(station_file)
+  lines = f.read().splitlines()
+  stations = {}
+  stations['name'] = []
+  stations['lon'] = []
+  stations['lat'] = []
+  for sta in lines:
+    val = sta.split()
+    stations['name'].append(val[2].strip("'"))
+    stations['lon'].append(float(val[0]))
+    stations['lat'].append(float(val[1]))
+  nstations = len(stations['name'])
+  stations['lon'] = np.asarray(stations['lon'])
+  stations['lat'] = np.asarray(stations['lat'])
+
+  return stations
 
 #######################################################################
 #######################################################################
+
 
 if __name__ == '__main__':
 
-  # Read the list of stations
-  f = open(data_direc+'stations.txt','r')
-  stations = f.read().splitlines()
-  f.close()
-  
-  for i,line in enumerate(stations):
+  run_files = sorted(glob.glob(run_direc+'spec*.nc'))
+  if len(run_files) > 0:
+    run_data,stations = read_model_data(run_files[0:10],'average')
+    model_spectrum_avg = np.zeros((1,run_data['theta'].size,run_data['freq'].size))
+  else:
+    stations = read_station_file(data_direc+'stations.txt')
+
+
+  for i,sta in enumerate(stations['name']):
   
 
     # Find station ID
-    sta = line.split('  ')[2].replace("'","")
-    lon = float(line.split('  ')[0])
-    lat = float(line.split('  ')[1])
+    lon = stations['lon'][i]
+    lat = stations['lat'][i]
     print sta
 
-    #if sta != '42039':
-    #  continue
+    if sta.find(',') > 0:
+      continue
   
     # Read station data variables
     obs_data,success = read_station_data(sta,year,variables)
@@ -321,10 +441,19 @@ if __name__ == '__main__':
         spectrum_max = compute_spectrum(obs_data,variables,'max')
       if mode == 'individual':
         spectrum = compute_spectrum(obs_data,variables,'individual')
+      if mode == 'validation':
+        obs_spectrum_avg = compute_spectrum(obs_data,variables,'average')
+        
+
 
       # Plot the spectrum 
       if mode == 'stats':
-        plot_station_spectrum(sta,lon,lat,obs_data['freq'],obs_data['theta'],spectrum_avg,['averaged over '+year],spectrum_max,['maximum over '+year])  
+        plot_station_spectrum(sta,lon,lat,obs_data['freq'],obs_data['theta'],spectrum_avg,['averaged over '+year], 
+                                          obs_data['freq'],obs_data['theta'],spectrum_max,['maximum over '+year])  
       elif mode == 'individual':
         plot_station_spectrum(sta,lon,lat,obs_data['freq'],obs_data['theta'],spectrum,obs_data['datetime'])  
+      elif mode == 'validation':
+        model_spectrum_avg[0,:,:] = run_data['spectrum'][0,i,:,:].T
+        plot_station_spectrum(sta,lon,lat,obs_data['freq'],obs_data['theta'],obs_spectrum_avg,['observations averaged over '+year],
+                                          run_data['freq'],run_data['theta'],model_spectrum_avg,['model averaged over '+year])  
           
