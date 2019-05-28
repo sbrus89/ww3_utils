@@ -24,134 +24,147 @@ ice_nc = netCDF4.Dataset(cfg['ice_file'],'r')
 lon_ice = ice_nc.variables['lon'][:]
 lat_ice = ice_nc.variables['lat'][:]
 time_ice = ice_nc.variables['time'][:].astype(np.float64)
+shape_ice = (time_ice.size, lat_ice.size, lon_ice.size)
 
-# Get data from iceberg file
-iceberg_nc = netCDF4.Dataset(cfg['iceberg_file'],'r')
-lon_iceberg = iceberg_nc.variables['longitude'][:]
-lat_iceberg = iceberg_nc.variables['latitude'][:]
-time_iceberg = iceberg_nc.variables['time'][:].astype(np.float64)
-iceberg_probability = iceberg_nc.variables['probability'][:,:,:]
-iceberg_area = iceberg_nc.variables['ice_area'][:,:,:]
+if cfg['iceberg_file'] != '':
+  # Get data from iceberg file
+  iceberg_nc = netCDF4.Dataset(cfg['iceberg_file'],'r')
+  lon_iceberg = iceberg_nc.variables['longitude'][:]
+  lat_iceberg = iceberg_nc.variables['latitude'][:]
+  time_iceberg = iceberg_nc.variables['time'][:].astype(np.float64)
+  iceberg_probability = iceberg_nc.variables['probability'][:,:,:]
+  iceberg_area = iceberg_nc.variables['ice_area'][:,:,:]
+  
+  # Extend iceberg data to first snap of the next year
+  iceberg_nc_next = netCDF4.Dataset(cfg['iceberg_file_next'],'r')
+  time_iceberg = np.append(time_iceberg,iceberg_nc_next.variables['time'][0].astype(np.float64))
+  iceberg_probability = np.concatenate((iceberg_probability,np.expand_dims(iceberg_nc_next.variables['probability'][0,:,:],axis=0)))
+  iceberg_area = np.concatenate((iceberg_area,np.expand_dims(iceberg_nc_next.variables['ice_area'][0,:,:],axis=0)))
+  
+  # Calculate iceberg damping 
+  Asw = 100.0
+  W = 0.42
+  iceberg_damping = np.multiply(iceberg_probability,iceberg_area)/Asw/W
 
-# Extend iceberg data to first snap of the next year
-iceberg_nc_next = netCDF4.Dataset(cfg['iceberg_file_next'],'r')
-time_iceberg = np.append(time_iceberg,iceberg_nc_next.variables['time'][0].astype(np.float64))
-iceberg_probability = np.concatenate((iceberg_probability,np.expand_dims(iceberg_nc_next.variables['probability'][0,:,:],axis=0)))
-iceberg_area = np.concatenate((iceberg_area,np.expand_dims(iceberg_nc_next.variables['ice_area'][0,:,:],axis=0)))
+else:
 
-# Calculate iceberg damping 
-Asw = 100.0
-W = 0.42
-iceberg_damping = np.multiply(iceberg_probability,iceberg_area)/Asw/W
+  iceberg_damping = np.zeros(shape_ice)
 
 ########################################################################
 # Spatial interpolation 
 ########################################################################
 
-# Create high-res grid of points to interpolate to 
-Lon_ice,Lat_ice = np.meshgrid(lon_ice,lat_ice)
-shape = (time_iceberg.size, Lon_ice.shape[0], Lon_ice.shape[1])
-iceberg_damping_interp = np.zeros(shape)
-
-# Find sub-section of high-res grid that corresponds with the iceberg data
-min_lon_iceberg = np.amin(lon_iceberg)
-max_lon_iceberg = np.amax(lon_iceberg)
-min_lat_iceberg = np.amin(lat_iceberg)
-max_lat_iceberg = np.amax(lat_iceberg)
-idx_lon, = np.where((lon_ice >= min_lon_iceberg) & (lon_ice <= max_lon_iceberg))
-idx_lat, = np.where((lat_ice >= min_lat_iceberg) & (lat_ice <= max_lat_iceberg))
-subsection_idx = np.ix_(idx_lat,idx_lon)
-subsection_shape = Lon_ice[subsection_idx].shape
-
-# Get points to interpolate 
-Lon = Lon_ice[subsection_idx].ravel()
-Lat = Lat_ice[subsection_idx].ravel()
-pts = np.vstack((Lon,Lat)).T
-
-# Interpolate iceberg timesnaps in space
-for i,t in enumerate(time_iceberg):
- 
-  # Replace nan values with average of non-nan neighbor values
-  idx,idy = np.where(np.isnan(iceberg_damping[i,:,:]))
-  for j in range(len(idx)):
-    neighborhood = iceberg_damping[i,idx[j]-1:idx[j]+2,idy[j]-1:idy[j]+2]
-    n = np.count_nonzero(~np.isnan(neighborhood))
-    iceberg_damping[i,idx[j],idy[j]] = np.nansum(neighborhood)/n
-
-  # Interpolate and insert values back into high-res grid
-  interpolate_icebergs = interpolate.RegularGridInterpolator((lon_iceberg,lat_iceberg),iceberg_damping[i,:,:])
-  interp_data = interpolate_icebergs(pts)
-  iceberg_damping_interp[i][subsection_idx] = np.reshape(interp_data,subsection_shape)
+if iceberg_damping.shape != shape_ice:
+  # Create high-res grid of points to interpolate to 
+  Lon_ice,Lat_ice = np.meshgrid(lon_ice,lat_ice)
+  shape = (time_iceberg.size, Lon_ice.shape[0], Lon_ice.shape[1])
+  iceberg_damping_interp = np.zeros(shape)
   
-  # Plot coarse grid iceberg concentration
-  plt.figure(figsize=(12,4))
-  plt.contourf(lon_iceberg,lat_iceberg,iceberg_damping[i,:,:].T)
-  plt.ylim(-90.0,-40.0)
-  plt.savefig('raw_icebergs_'+str(i).zfill(3)+'.png')
-  plt.close()
+  # Find sub-section of high-res grid that corresponds with the iceberg data
+  min_lon_iceberg = np.amin(lon_iceberg)
+  max_lon_iceberg = np.amax(lon_iceberg)
+  min_lat_iceberg = np.amin(lat_iceberg)
+  max_lat_iceberg = np.amax(lat_iceberg)
+  idx_lon, = np.where((lon_ice >= min_lon_iceberg) & (lon_ice <= max_lon_iceberg))
+  idx_lat, = np.where((lat_ice >= min_lat_iceberg) & (lat_ice <= max_lat_iceberg))
+  subsection_idx = np.ix_(idx_lat,idx_lon)
+  subsection_shape = Lon_ice[subsection_idx].shape
   
-  # Plot interpolated iceberg concentration
-  plt.figure(figsize=(12,4))
-  plt.contourf(lon_ice,lat_ice,iceberg_damping_interp[i,:,:])
-  plt.ylim(-90.0,-40.0)
-  plt.savefig('interp_icebergs_'+str(i).zfill(3)+'.png')
-  plt.close()
+  # Get points to interpolate 
+  Lon = Lon_ice[subsection_idx].ravel()
+  Lat = Lat_ice[subsection_idx].ravel()
+  pts = np.vstack((Lon,Lat)).T
+  
+  # Interpolate iceberg timesnaps in space
+  for i,t in enumerate(time_iceberg):
+   
+    # Replace nan values with average of non-nan neighbor values
+    idx,idy = np.where(np.isnan(iceberg_damping[i,:,:]))
+    for j in range(len(idx)):
+      neighborhood = iceberg_damping[i,idx[j]-1:idx[j]+2,idy[j]-1:idy[j]+2]
+      n = np.count_nonzero(~np.isnan(neighborhood))
+      iceberg_damping[i,idx[j],idy[j]] = np.nansum(neighborhood)/n
+  
+    # Interpolate and insert values back into high-res grid
+    interpolate_icebergs = interpolate.RegularGridInterpolator((lon_iceberg,lat_iceberg),iceberg_damping[i,:,:])
+    interp_data = interpolate_icebergs(pts)
+    iceberg_damping_interp[i][subsection_idx] = np.reshape(interp_data,subsection_shape)
+    
+    # Plot coarse grid iceberg concentration
+    plt.figure(figsize=(12,4))
+    plt.contourf(lon_iceberg,lat_iceberg,iceberg_damping[i,:,:].T)
+    plt.ylim(-90.0,-40.0)
+    plt.savefig('raw_icebergs_'+str(i).zfill(3)+'.png')
+    plt.close()
+    
+    # Plot interpolated iceberg concentration
+    plt.figure(figsize=(12,4))
+    plt.contourf(lon_ice,lat_ice,iceberg_damping_interp[i,:,:])
+    plt.ylim(-90.0,-40.0)
+    plt.savefig('interp_icebergs_'+str(i).zfill(3)+'.png')
+    plt.close()
+
+else:
+  iceberg_damping_interp = iceberg_damping
 
 ########################################################################
 # Temporal interpolation 
 ########################################################################
 
-# Get reference times for ice and iceberg data
-ref_date_ice = ice_nc.variables['time'].getncattr('units').replace('hours since ','')
-ref_date_ice = datetime.datetime.strptime(ref_date_ice.replace('.0 +0:00',''),'%Y-%m-%d %H:%M:%S')
-ref_date_iceberg = iceberg_nc.variables['time'].getncattr('units').replace('days since ','')
-ref_date_iceberg = datetime.datetime.strptime(ref_date_iceberg,'%Y-%m-%dT%H:%M:%SZ')
+if iceberg_damping_interp.shape != shape_ice:
+  # Get reference times for ice and iceberg data
+  ref_date_ice = ice_nc.variables['time'].getncattr('units').replace('hours since ','')
+  ref_date_ice = datetime.datetime.strptime(ref_date_ice.replace('.0 +0:00',''),'%Y-%m-%d %H:%M:%S')
+  ref_date_iceberg = iceberg_nc.variables['time'].getncattr('units').replace('days since ','')
+  ref_date_iceberg = datetime.datetime.strptime(ref_date_iceberg,'%Y-%m-%dT%H:%M:%SZ')
+  
+  # Initialize iceberg time window
+  i_iceberg = 0
+  t_iceberg1 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg])
+  t_iceberg2 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg+1])
+  
+  # Initialize final iceberg data array
+  iceberg_damping_final = np.zeros(shape_ice)
+  
+  for i,t in enumerate(time_ice):
+  
+    # Find iceberg time window that corresponds with ice time
+    t_ice = ref_date_ice + datetime.timedelta(hours=t)
+    print datetime.datetime.strftime(t_ice,'%Y-%m-%d %H:%M:%S') 
+    print datetime.datetime.strftime(t_iceberg1,'%Y-%m-%d %H:%M:%S'),datetime.datetime.strftime(t_iceberg2,'%Y-%m-%d %H:%M:%S')
+    if (t_ice > t_iceberg2):
+      i_iceberg = i_iceberg + 1
+      t_iceberg1 = t_iceberg2
+      t_iceberg2 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg+1])
+  
+    # Interpolate in time
+    if cfg['interp_type'] == 'linear':
+      top = t_ice-t_iceberg2
+      bottom = t_iceberg1-t_iceberg2
+      phi1 = top.total_seconds()/bottom.total_seconds()
+      top = t_ice-t_iceberg1
+      bottom = t_iceberg2-t_iceberg1
+      phi2 = top.total_seconds()/bottom.total_seconds()
+      iceberg_damping_final[i,:,:] = phi1*iceberg_damping_interp[i_iceberg,:,:] + phi2*iceberg_damping_interp[i_iceberg+1,:,:]
+    elif cfg['interp_type'] == 'constant':
+      iceberg_damping_final[i,:,:] = iceberg_damping_interp[i_iceberg,:,:]
+  
+    # Plot timesnaps
+    if i % 20 == 0:
+      plt.figure()
+      plt.contourf(lon_ice,lat_ice,ice_nc.variables['ICEC_L1'][i,:,:])
+      plt.savefig('ice_'+str(i).zfill(4)+'.png')
+      plt.close()
+  
+      plt.figure(figsize=(12,4))
+      plt.contourf(lon_ice,lat_ice,iceberg_damping_final[i,:,:])
+      plt.ylim(-90.0,-40.0)
+      plt.savefig('final_icebergs_'+str(i).zfill(4)+'.png')
+      plt.close()
 
-# Initialize iceberg time window
-i_iceberg = 0
-t_iceberg1 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg])
-t_iceberg2 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg+1])
+else:
 
-# Initialize final iceberg data array
-shape = (time_ice.size, lat_ice.size, lon_ice.size)
-iceberg_damping_final = np.zeros(shape)
-
-
-for i,t in enumerate(time_ice):
-
-  # Find iceberg time window that corresponds with ice time
-  t_ice = ref_date_ice + datetime.timedelta(hours=t)
-  print datetime.datetime.strftime(t_ice,'%Y-%m-%d %H:%M:%S') 
-  print datetime.datetime.strftime(t_iceberg1,'%Y-%m-%d %H:%M:%S'),datetime.datetime.strftime(t_iceberg2,'%Y-%m-%d %H:%M:%S')
-  if (t_ice > t_iceberg2):
-    i_iceberg = i_iceberg + 1
-    t_iceberg1 = t_iceberg2
-    t_iceberg2 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg+1])
-
-  # Interpolate in time
-  if cfg['interp_type'] == 'linear':
-    top = t_ice-t_iceberg2
-    bottom = t_iceberg1-t_iceberg2
-    phi1 = top.total_seconds()/bottom.total_seconds()
-    top = t_ice-t_iceberg1
-    bottom = t_iceberg2-t_iceberg1
-    phi2 = top.total_seconds()/bottom.total_seconds()
-    iceberg_damping_final[i,:,:] = phi1*iceberg_damping_interp[i_iceberg,:,:] + phi2*iceberg_damping_interp[i_iceberg+1,:,:]
-  elif cfg['interp_type'] == 'constant':
-    iceberg_damping_final[i,:,:] = iceberg_damping_interp[i_iceberg,:,:]
-
-  # Plot timesnaps
-  if i % 20 == 0:
-    plt.figure()
-    plt.contourf(lon_ice,lat_ice,ice_nc.variables['ICEC_L1'][i,:,:])
-    plt.savefig('ice_'+str(i).zfill(4)+'.png')
-    plt.close()
-
-    plt.figure(figsize=(12,4))
-    plt.contourf(lon_ice,lat_ice,iceberg_damping_final[i,:,:])
-    plt.ylim(-90.0,-40.0)
-    plt.savefig('final_icebergs_'+str(i).zfill(4)+'.png')
-    plt.close()
+  iceberg_damping_final = iceberg_damping_interp
  
 ########################################################################
 # Create combined NetCDF file 
