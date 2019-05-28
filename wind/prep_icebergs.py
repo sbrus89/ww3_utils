@@ -5,33 +5,28 @@ import matplotlib.pyplot as plt
 import datetime
 import subprocess
 import os
+import yaml
+import pprint
+
 plt.switch_backend('agg')
-
-########################################################################
-# User options
-########################################################################
-
-# Select either 'linear' or 'constant for temporal interpolation
-interp_type = 'linear'
-
-# Data file paths, ice is assumed to be higher resolution in space and time  
-ice_file = '../ice/icecon.200201-200212.ww3.nc'
-iceberg_file = './prod_latlon_jason1_2002.nc'
-iceberg_file_next = '../../../2003/reanalysis_data/icebergs/prod_latlon_jason1_2003.nc'
-combined_file = 'ice.combined.200201-200212.ww3.nc'
 
 ########################################################################
 # Read in data
 ########################################################################
 
+pwd = os.getcwd()
+f = open(pwd+'/prep_icebergs.config')
+cfg = yaml.load(f)
+pprint.pprint(cfg)
+
 # Get data from ice file
-ice_nc = netCDF4.Dataset(ice_file,'r')
+ice_nc = netCDF4.Dataset(cfg['ice_file'],'r')
 lon_ice = ice_nc.variables['lon'][:]
 lat_ice = ice_nc.variables['lat'][:]
 time_ice = ice_nc.variables['time'][:].astype(np.float64)
 
 # Get data from iceberg file
-iceberg_nc = netCDF4.Dataset(iceberg_file,'r')
+iceberg_nc = netCDF4.Dataset(cfg['iceberg_file'],'r')
 lon_iceberg = iceberg_nc.variables['longitude'][:]
 lat_iceberg = iceberg_nc.variables['latitude'][:]
 time_iceberg = iceberg_nc.variables['time'][:].astype(np.float64)
@@ -39,7 +34,7 @@ iceberg_probability = iceberg_nc.variables['probability'][:,:,:]
 iceberg_area = iceberg_nc.variables['ice_area'][:,:,:]
 
 # Extend iceberg data to first snap of the next year
-iceberg_nc_next = netCDF4.Dataset(iceberg_file_next,'r')
+iceberg_nc_next = netCDF4.Dataset(cfg['iceberg_file_next'],'r')
 time_iceberg = np.append(time_iceberg,iceberg_nc_next.variables['time'][0].astype(np.float64))
 iceberg_probability = np.concatenate((iceberg_probability,np.expand_dims(iceberg_nc_next.variables['probability'][0,:,:],axis=0)))
 iceberg_area = np.concatenate((iceberg_area,np.expand_dims(iceberg_nc_next.variables['ice_area'][0,:,:],axis=0)))
@@ -134,7 +129,7 @@ for i,t in enumerate(time_ice):
     t_iceberg2 = ref_date_iceberg + datetime.timedelta(days=time_iceberg[i_iceberg+1])
 
   # Interpolate in time
-  if interp_type == 'linear':
+  if cfg['interp_type'] == 'linear':
     top = t_ice-t_iceberg2
     bottom = t_iceberg1-t_iceberg2
     phi1 = top.total_seconds()/bottom.total_seconds()
@@ -142,7 +137,7 @@ for i,t in enumerate(time_ice):
     bottom = t_iceberg2-t_iceberg1
     phi2 = top.total_seconds()/bottom.total_seconds()
     iceberg_damping_final[i,:,:] = phi1*iceberg_damping_interp[i_iceberg,:,:] + phi2*iceberg_damping_interp[i_iceberg+1,:,:]
-  elif interp_type == 'constant':
+  elif cfg['interp_type'] == 'constant':
     iceberg_damping_final[i,:,:] = iceberg_damping_interp[i_iceberg,:,:]
 
   # Plot timesnaps
@@ -163,9 +158,8 @@ for i,t in enumerate(time_ice):
 ########################################################################
 
 # Copy ice file and open for appending
-pwd = os.getcwd()
-dest = pwd+'/'+combined_file
-subprocess.call(['cp',ice_file,dest])
+dest = pwd+'/'+cfg['combined_file']
+subprocess.call(['cp',cfg['ice_file'],dest])
 ncfile = netCDF4.Dataset(dest,'a')
 
 # Add the iceberg data
