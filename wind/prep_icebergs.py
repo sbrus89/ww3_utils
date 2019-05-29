@@ -40,11 +40,19 @@ if cfg['iceberg_file'] != '':
   time_iceberg = np.append(time_iceberg,iceberg_nc_next.variables['time'][0].astype(np.float64))
   iceberg_probability = np.concatenate((iceberg_probability,np.expand_dims(iceberg_nc_next.variables['probability'][0,:,:],axis=0)))
   iceberg_area = np.concatenate((iceberg_area,np.expand_dims(iceberg_nc_next.variables['ice_area'][0,:,:],axis=0)))
-  
+
+  # Calculate area of grid cells from iceberg dataset  
+  Rearth = 6371.229                                                                     
+  deg2rad = np.pi/180.0                                                                 
+  dLon = (lon_iceberg[1] - lon_iceberg[0])*deg2rad                                      
+  lat_iceberg_cell = lat_iceberg + 0.5*(lat_iceberg[1]-lat_iceberg[0])                  
+  lat_iceberg_cell = np.insert(lat_iceberg_cell,0,-90.1)                                
+  dLat = np.sin(lat_iceberg_cell[1:]*deg2rad) - np.sin(lat_iceberg_cell[0:-1]*deg2rad)  
+  Asw = Rearth**2*dLon*dLat                                                             
+
   # Calculate iceberg damping 
-  Asw = 100.0
-  W = 0.42
-  iceberg_damping = np.multiply(iceberg_probability,iceberg_area)/Asw/W
+  W = 0.42                                                                           # effective iceberg width
+  iceberg_damping = np.divide(np.multiply(iceberg_probability,iceberg_area),Asw)/W   # inverse of e-folding scale from Ardhuin et el. 2011
 
 else:
 
