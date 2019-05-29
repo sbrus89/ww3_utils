@@ -79,14 +79,15 @@ if iceberg_damping.shape != shape_ice:
   for i,t in enumerate(time_iceberg):
    
     # Replace nan values with average of non-nan neighbor values
+    iceberg_damping_filled = np.copy(iceberg_damping[i,:,:])
     idx,idy = np.where(np.isnan(iceberg_damping[i,:,:]))
     for j in range(len(idx)):
       neighborhood = iceberg_damping[i,idx[j]-1:idx[j]+2,idy[j]-1:idy[j]+2]
       n = np.count_nonzero(~np.isnan(neighborhood))
-      iceberg_damping[i,idx[j],idy[j]] = np.nansum(neighborhood)/n
+      iceberg_damping_filled[idx[j],idy[j]] = np.nansum(neighborhood)/n
   
     # Interpolate and insert values back into high-res grid
-    interpolate_icebergs = interpolate.RegularGridInterpolator((lon_iceberg,lat_iceberg),iceberg_damping[i,:,:])
+    interpolate_icebergs = interpolate.RegularGridInterpolator((lon_iceberg,lat_iceberg),iceberg_damping_filled)
     interp_data = interpolate_icebergs(pts)
     iceberg_damping_interp[i][subsection_idx] = np.reshape(interp_data,subsection_shape)
     
