@@ -186,7 +186,7 @@ ncfile = netCDF4.Dataset(dest,'a')
 
 # Add the iceberg data
 if 'iceberg_damping' not in ncfile.variables.keys():
-  nc_iceberg_damping = ncfile.createVariable('iceberg_damping','f8',('time','lat','lon'))
+  nc_iceberg_damping = ncfile.createVariable('iceberg_damping','f8',('time','lat','lon'),fill_value=3.4e38)
 nc_iceberg_damping[:] = iceberg_damping_final
 nc_iceberg_damping.units = 'km-1'
 nc_iceberg_damping.long_name = 'iceberg damping'
