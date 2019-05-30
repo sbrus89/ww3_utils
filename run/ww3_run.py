@@ -119,7 +119,7 @@ if __name__ == '__main__':
   if cfg['icebergs'] == 'T':
     forcings.append('icebergs')
    
-  ww3_files = {'wind':'wind.ww3','currents':'current.ww3','ssh':'level.ww3','ice':'ice.ww3'}
+  ww3_files = {'wind':'wind.ww3','currents':'current.ww3','ssh':'level.ww3','ice':'ice.ww3','icebergs':'ice.ww3'}
 
   # Create ww3_prnc.inp, link correct data file, and run ww3_prnc
   for forcing in forcings:
