@@ -165,6 +165,12 @@ if __name__ == '__main__':
 
   # Get the start and end dates for each run
   date_range,restart_interval = get_date_ranges(cfg["date_start"],cfg["date_end"],cfg["days_per_run"])
+  
+  # Set the estimated runtime
+  if 'runtime' in cfg:
+    runtime = cfg['runtime']
+  else:
+    runtime = None
 
   # Setup the submission scripts for the series of runs
   for i in range(len(date_range)):
@@ -203,6 +209,7 @@ if __name__ == '__main__':
                                               job_name=cfg["job_name"],
                                               queue=cfg["queue"],
                                               exe=cfg["exe"],
+                                              time=runtime,
                                               filename=sub_file,
                                               pre_cmds=pre_cmds,
                                               post_cmds=post_cmds)
