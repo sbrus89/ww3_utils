@@ -86,7 +86,7 @@ if __name__ == '__main__':
   
   # Create ww3_strt.inp and run ww3_strt
   run_strt = 'y'
-  if os.path.exists(pwd+'/restart.ww3'):
+  if os.path.lexists(pwd+'/restart.ww3'):
     run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
   if run_strt == 'y':
     subprocess.call(['python','ww3_strt.py'])
