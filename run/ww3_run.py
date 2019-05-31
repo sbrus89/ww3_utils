@@ -64,8 +64,12 @@ def get_date_ranges(date_start,date_end,days_per_run):
 if __name__ == '__main__':
 
   parser = argparse.ArgumentParser()
-  parser.add_argument('--submit', action='store_true', help='submit the jobs with dependencies')
-  parser.add_argument('--test'  , action='store_true', help='write out test files to test restart setup')
+  parser.add_argument('--submit'         , action='store_true', help='submit the jobs with dependencies')
+  parser.add_argument('--test'           , action='store_true', help='write out test files to test restart setup')
+  parser.add_argument('--skip_existing'  , action='store_true', help='skip over actions for existing file')
+  parser.add_argument('--ignore_existing', action='store_true', help='re-do actions for existing file')
+  parser.add_argument('--skip_grid'      , action='store_true', help='skip running ww3_grid')
+  parser.add_argument('--skip_strt'      , action='store_true', help='skip running ww3_strt')
   args = parser.parse_args()
 
   pwd = os.getcwd()
@@ -79,7 +83,15 @@ if __name__ == '__main__':
   # Create ww3_grid.inp and run ww3_grid
   run_grid = 'y'
   if os.path.exists(pwd+'/mod_def.ww3'):
-    run_grid = raw_input('mod_def.ww3 file exists, run ww3_grid? ')
+    if args.skip_existing:
+      run_grid = 'n'
+      print 'mod_def.ww3 file exists, skipping ww3_grid'
+    if args.skip_grid:
+      run_grid = 'n'
+    elif args.ignore_existing:
+      run_grid = 'y'
+    else:
+      run_grid = raw_input('mod_def.ww3 file exists, run ww3_grid? ')
   if run_grid == 'y':
     subprocess.call(['python','ww3_grid.py'])
     subprocess.call([pwd+'/ww3_grid'])
@@ -87,7 +99,15 @@ if __name__ == '__main__':
   # Create ww3_strt.inp and run ww3_strt
   run_strt = 'y'
   if os.path.lexists(pwd+'/restart.ww3'):
-    run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
+    if args.skip_existing:
+      run_strt = 'n'
+      print 'restart.ww3 file exists, skipping ww3_strt'
+    elif args.skip_strt:
+      run_strt = 'n'
+    elif args.ignore_existing:
+      run_strt = 'y'
+    else:
+      run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
   if run_strt == 'y':
     subprocess.call(['python','ww3_strt.py'])
     subprocess.call(['srun','-n','4',pwd+'/ww3_strt'])
@@ -126,7 +146,13 @@ if __name__ == '__main__':
     if cfg[forcing] == 'T':
       run_prnc = 'y'
       if os.path.exists(pwd+'/'+ww3_files[forcing]):
-        run_prnc = raw_input(forcing+'.ww3 file exists, run ww3_prnc? ')
+        if args.skip_existing:
+          run_prnc = 'n'
+          print forcing+'.ww3 file exisits, skipping ww3_prnc'
+        elif args.ignore_existing:
+          run_prnc = 'y'
+        else:
+          run_prnc = raw_input(forcing+'.ww3 file exists, run ww3_prnc? ')
       if run_prnc == 'y':
  
         # if only one forcing is requested don't require the config file to be named with a '.forcing' extension
@@ -148,7 +174,13 @@ if __name__ == '__main__':
   # Create ww3_shel.inp file, first updating the start/end times in ww3_shel.config
   gen_shel = 'y'
   if os.path.exists(pwd+'/ww3_shel.inp'):
-    gen_shel = raw_input('ww3_shel.inp file exists, run ww3_shel.py?')
+    if args.skip_existing:
+      gen_shel = 'n'
+      print 'ww3_shel.inp file exists, skipping ww3_shel.py'
+    elif args.ignore_existing:
+      gen_shel = 'y'
+    else:
+      gen_shel = raw_input('ww3_shel.inp file exists, run ww3_shel.py?')
   if gen_shel == 'y':
     lines = open(pwd+'/ww3_shel.config').read().splitlines()
     for i,line in enumerate(lines):
