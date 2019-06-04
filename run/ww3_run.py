@@ -34,6 +34,8 @@ def get_date_ranges(date_start,date_end,days_per_run):
     if date_range_end > date_run_end:
       date_range_end = date_run_end 
       keep_going = False
+      if date_range_end == date_range_start:
+        break
 
     # Format dates
     date1 = datetime.datetime.strftime(date_range_start, '%Y%m%d')
