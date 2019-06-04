@@ -7,11 +7,11 @@ import pprint
 pwd = os.getcwd()
 
 # Input parameters
-year = '2012'
-run_start_date = '10-01'
+year = '1999'
+run_start_date = '01-01'
 run_end_date   = '12-31'
 movement_tolerance = 0.1
-lonlat_box = [-80.0,-65.0,25.0,45.0]
+lonlat_box = [-180.0,180.0,-90.0,90.0]
 data_product = 'standard meterological'
 
 data_product_ID = {'standard meterological':[['stdmet','h']],

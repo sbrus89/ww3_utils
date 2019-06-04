@@ -261,7 +261,7 @@ def read_station_data(obs_file,min_date,max_date,variables):
    
   # Get data from observation file between min and max output times
   for line in obs[1:]:
-    if line.find('#') >= 0:
+    if line.find('#') >= 0 or len(line.strip()) == 0 or not line[0].isdigit():
       continue
     date = line[0:date_length]
     date_time = datetime.datetime.strptime(date,obs_frmt)
@@ -398,9 +398,12 @@ if __name__ == '__main__':
     if os.path.isfile(obs_file_check):
       obs_file = obs_file_check
 
+    obs_file_check = cfg['obs_direc']+sta+'.txt'
+    if os.path.isfile(obs_file_check):
+      obs_file = obs_file_check
+
 
     # Get data from observation file at output times
-
     if not obs_file:      
       print '  no observation file found'
     else:

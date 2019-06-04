@@ -4,8 +4,8 @@ import subprocess
 # Request parameters
 #--------------------
 data = 'ice'
-start_date = '1999-01-01 00:00'
-end_date   = '2000-01-01 00:00'
+start_date = '2010-01-01 00:00'
+end_date   = '2011-01-01 00:00'
 data_set   = 'CFSR hourly'
 region_box = ['-180','180','-90','90']
 
