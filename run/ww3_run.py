@@ -197,14 +197,13 @@ if __name__ == '__main__':
 
   # Get the start and end dates for each run
   date_range,restart_interval = get_date_ranges(cfg["date_start"],cfg["date_end"],cfg["days_per_run"])
+
+  # Check for existing restart files
+  existing_restarts = glob.glob(pwd+'/restart.ww3.*')  
   
-  # Set the estimated runtime
-  if 'runtime' in cfg:
-    runtime = cfg['runtime']
-  else:
-    runtime = None
 
   # Setup the submission scripts for the series of runs
+  sub_count = 0
   for i in range(len(date_range)):
     start = date_range[i][0]
     end = date_range[i][1]
@@ -234,6 +233,13 @@ if __name__ == '__main__':
     else:
       post_cmds = ['python ww3_restart.py']
  
+    # Set the estimated runtime
+    if 'runtime' in cfg:
+      runtime = cfg['runtime']
+    elif 'runtime_per_day' in cfg:
+      runtime = restart_interval[i]*cfg['runtime_per_day'] 
+    else:
+      runtime = None
 
     # Write the submission script
     submission_script.write_submission_script(machine=cfg["machine"],
@@ -246,15 +252,23 @@ if __name__ == '__main__':
                                               pre_cmds=pre_cmds,
                                               post_cmds=post_cmds)
 
+    # Check if end restart files exist
+    restart_end   = pwd+'/restart.ww3.'+end.replace(' ','_')
+    if restart_end in existing_restarts:
+      skip_submit = True
+    else:
+      skip_submit = False
 
     # Submit the runs with depenencies
     if args.submit:
-      if os.path.isfile(pwd+'/'+cfg['exe']):
-        if i > 0:
+      if os.path.isfile(pwd+'/'+cfg['exe']) and not skip_submit :
+        if sub_count > 0:
           run_cmd = ['sbatch','--dependency=afterok:'+job_id,sub_file]
         else:
           run_cmd = ['sbatch',sub_file]
   
+        sub_count = sub_count + 1
+
         print ' '.join(run_cmd)
         output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
         print output
