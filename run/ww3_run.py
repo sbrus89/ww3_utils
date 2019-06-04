@@ -86,7 +86,7 @@ if __name__ == '__main__':
     if args.skip_existing:
       run_grid = 'n'
       print 'mod_def.ww3 file exists, skipping ww3_grid'
-    if args.skip_grid:
+    elif args.skip_grid:
       run_grid = 'n'
     elif args.ignore_existing:
       run_grid = 'y'
