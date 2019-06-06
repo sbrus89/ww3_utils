@@ -7,7 +7,7 @@ import pprint
 pwd = os.getcwd()
 
 # Input parameters
-year = '1999'
+year = '2000'
 run_start_date = '01-01'
 run_end_date   = '12-31'
 movement_tolerance = 0.1
