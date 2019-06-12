@@ -9,15 +9,16 @@ import datetime
 ###############################################################################
 ###############################################################################
 
-def read_altimeter_data(year):
+def read_altimeter_data(filename):
 
-  f = 'accumulated_monthly_'+str(year)+'.nc'
-  nc_file = netCDF4.Dataset(f,'r')
+  nc_file = netCDF4.Dataset(filename,'r')
   swh = nc_file.variables['swh_sum'][:]
-  nobs = nc_file['nobs'][:]
+  nobs = nc_file.variables['nobs'][:]
+  lon = nc_file.variables['lon'][:]
+  lat = nc_file.variables['lat'][:]
   nc_file.close()
 
-  return swh,nobs
+  return swh,nobs,lon,lat
 
 ###############################################################################
 ###############################################################################
@@ -25,8 +26,6 @@ def read_altimeter_data(year):
 def compute_altimeter_average(year_start,year_end,month=None,season=None):
 
   swh = np.zeros((181,361))
-  lon_vec = np.linspace(0,360,361)
-  lat_vec = np.linspace(-90,90,181)
   nobs = np.zeros((181,361))
 
   if month != None and season != None:
@@ -52,7 +51,8 @@ def compute_altimeter_average(year_start,year_end,month=None,season=None):
     for i,mnth in enumerate(months):
       year = yr + year_adj[i]
 
-      sig_wave_height,num_observations = read_altimeter_data(year)
+      filename = 'accumulated_monthly_'+str(yr)+'.nc'
+      sig_wave_height,num_observations,lon_vec,lat_vec = read_altimeter_data(filename)
 
       # Accumulate SWH observations and counts
       swh = swh + sig_wave_height[mnth-1,:,:]
@@ -84,12 +84,23 @@ def plot_altimeter_data(lon_vec,lat_vec,swh,filename):
 
 if __name__ == '__main__':
 
-    year_start = 1992
-    year_end   = 2000
-  
+    monthly = True 
+    seasonal = True
 
-    for mnth in range(1,13):
+    year_start = 1999
+    year_end   = 2010 
+  
+    if monthly == True:
+      for mnth in range(1,13):
    
-      lon_vec,lat_vec,swh = compute_altimeter_average(year_start,year_end,month=mnth)
-      filename = 'swh_avg_'+str(year_start)+'-'+str(year_end)+'_month'+str(mnth).zfill(2)
-      plot_altimeter_data(lon_vec,lat_vec,swh,filename)
+        lon_vec,lat_vec,swh = compute_altimeter_average(year_start,year_end,month=mnth)
+        filename = 'swh_avg_'+str(year_start)+'-'+str(year_end)+'_month'+str(mnth).zfill(2)+'.png'
+        plot_altimeter_data(lon_vec,lat_vec,swh,filename)
+
+    if seasonal == True:
+      for season in ['winter','spring','summer','fall']:
+
+        lon_vec,lat_vec,swh = compute_altimeter_average(year_start,year_end,season=season)
+        filename = 'swh_avg_'+str(year_start)+'-'+str(year_end)+'_'+season+'.png'
+        plot_altimeter_data(lon_vec,lat_vec,swh,filename)
+
