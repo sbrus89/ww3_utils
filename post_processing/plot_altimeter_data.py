@@ -23,12 +23,20 @@ def read_altimeter_data(filename):
 ###############################################################################
 ###############################################################################
 
-def compute_altimeter_average(year_start,year_end,month=None,season=None):
+def compute_altimeter_average(year_start,year_end,month=None,season=None,year=None):
 
   swh = np.zeros((181,361))
   nobs = np.zeros((181,361))
 
-  if month != None and season != None:
+  arg_count = 0
+  if month != None:
+    arg_count = arg_count + 1
+  if season != None:
+    arg_count = arg_count + 1
+  if year != None:
+    arg_count = arg_count + 1
+
+  if arg_count == 0 or arg_count > 1 :
     raise SystemExit(0)
 
   if month:
@@ -46,6 +54,9 @@ def compute_altimeter_average(year_start,year_end,month=None,season=None):
   elif season == 'winter':
     months = [12,1,2]
     year_adj = [-1,0,0]
+  elif year:
+    months   = [1,2,3,4,5,6,7,8,9,10,11,12]
+    year_adj = [0,0,0,0,0,0,0,0,0, 0, 0, 0]
     
   for yr in range(year_start,year_end+1): 
     for i,mnth in enumerate(months):
@@ -78,6 +89,7 @@ def plot_altimeter_data(lon_vec,lat_vec,swh,filename):
   cf = plt.contourf(lon_vec,lat_vec,swh,levels)
   plt.colorbar(cf,orientation='horizontal')
   plt.savefig(filename)
+  plt.close()
 
 ###############################################################################
 ###############################################################################
@@ -86,6 +98,7 @@ if __name__ == '__main__':
 
     monthly = True 
     seasonal = True
+    yearly = True
 
     year_start = 1999
     year_end   = 2010 
@@ -104,3 +117,10 @@ if __name__ == '__main__':
         filename = 'swh_avg_'+str(year_start)+'-'+str(year_end)+'_'+season+'.png'
         plot_altimeter_data(lon_vec,lat_vec,swh,filename)
 
+    if yearly == True:
+      for year in range(year_start,year_end+1):
+ 
+        lon_vec,lat_vec,swh = compute_altimeter_average(year,year,year=True)
+        filename = 'swh_avg_'+str(year)+'.png'
+        plot_altimeter_data(lon_vec,lat_vec,swh,filename)
+   
