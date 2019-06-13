@@ -5,6 +5,7 @@ from mpl_toolkits.basemap import Basemap
 import numpy as np
 import glob
 import datetime
+import calendar
 import os
 import yaml
 import pprint
@@ -12,7 +13,10 @@ import subprocess
 from mpl_toolkits.basemap import Basemap
 plt.switch_backend('agg')
 
-def read_field_ww3(f):
+###############################################################################################
+###############################################################################################
+
+def read_field_ww3(f,variable='hs'):
 
   nc_file = netCDF4.Dataset(f,'r')
 
@@ -30,43 +34,133 @@ def read_field_ww3(f):
   lon  = nc_file.variables['longitude'][:] 
   lat  = nc_file.variables['latitude'][:]
 
-  var = nc_file.variables['hs'][0,:,:]
-
-  return lon,lat,var,output_date
-
-
-def read_field_e3sm(f):
-
-  nc_file = netCDF4.Dataset(f,'r')
-
-  output_date = f.split('.')[-2] 
-
-  lon  = np.linspace(cfg["lon_range"][0],cfg["lon_range"][1],nc_file.dimensions['NX'].size)
-  lat  = np.linspace(cfg["lat_range"][0],cfg["lat_range"][1],nc_file.dimensions['NY'].size)
-
-  var = nc_file.variables['hs'][:,:]
+  var = nc_file.variables[variable][0,:,:]
 
   return lon,lat,var,output_date
 
 ###############################################################################################
 ###############################################################################################
 
-if __name__ == '__main__':
+def difference_fields(file1,file2,variable='hs'):
 
-  pwd = os.getcwd()
+  lon,lat,var,output_date = read_field_ww3(file1,variable)
+  lon2,lat2,var2,output_date2 = read_field_ww3(file2,variable)
+  if var.shape == var2.shape:
+    var = var-var2
+  elif (var.shape[0] == var2.shape[0]/2) and (var.shape[1] == var2.shape[1]/2):
+    var = var-var2[::2,::2]
+  elif (var.shape[0] == var2.shape[0]*2) and (var.shape[1] == var2.shape[1]*2):
+    var = var[::2,::2]-var2
+    lon = lon2
+    lat = lat2
+  if output_date != output_date2:
+    print 'dates do not match'
+    raise SystemExit(0)
+
+  return lon,lat,var,output_date
+
+###############################################################################################
+###############################################################################################
+
+def compute_average(year_start,year_end,files,direc2=None,month=None,season=None,year=None):
+
+  arg_count = 0
+  if month != None:
+    arg_count = arg_count + 1
+  if season != None:
+    arg_count = arg_count + 1
+  if year != None:
+    arg_count = arg_count + 1
+
+  if arg_count == 0 or arg_count > 1 :
+    raise SystemExit(0)
+
+  if month:
+    months = [month]
+    year_adj = [0]
+  elif season == 'spring':
+    months = [3,4,5]
+    year_adj = [0,0,0]
+  elif season == 'summer':
+    months = [6,7,8]
+    year_adj = [0,0,0]
+  elif season == 'fall':
+    months = [9,10,11]
+    year_adj = [0,0,0]
+  elif season == 'winter':
+    months = [12,1,2]
+    year_adj = [-1,0,0]
+  elif year:
+    months   = [1,2,3,4,5,6,7,8,9,10,11,12]
+    year_adj = [0,0,0,0,0,0,0,0,0, 0, 0, 0]
+ 
   
-  # Read in configuration file
-  f = open(pwd+'/plot_fields.config')
-  cfg = yaml.load(f)
-  pprint.pprint(cfg)
+  count = 0
+  for year in range(year_start,year_end):
+    for mnth in months:
+
+      month_start = datetime.datetime(year,mnth,1,0,0)
+      month_end = datetime.datetime(year,mnth,calendar.monthrange(year,mnth)[1],23,59)
+
+      for f in files:
+        filename = f.split('/')[-1]
+                
+        file_date = filename.split('.')[1]
+        file_datetime = datetime.datetime.strptime(file_date,'%Y%m%dT%HZ')
+   
+        if (file_datetime >= month_start) and (file_datetime <= month_end):
+          print filename
+     
+          # Read in and compute fields to plot
+          if direc2:
+            lon,lat,var,output_date = difference_fields(f,direc2+filename)
+          else:
+            lon,lat,var,output_date = read_field_ww3(f)
+    
+          # Initialize average array
+          if count == 0:
+            var_avg = np.zeros(var.shape)
+
+          # Accumulate for average
+          var_avg = var_avg + var
+          count = count + 1
+    
+  # Compute average
+  var_avg = var_avg/float(count)
+
+  return lon,lat,var_avg
+
+###############################################################################################
+###############################################################################################
+
+def plot_timesnaps(files,cfg):
+
+  nruns,cmap,diff,run,symmetric_range = determine_plot_type(cfg)
+
+  for f in files:
+    filename = f.split('/')[-1]
+    print filename
   
-  # Setup to read either e3sm or ww3 output
-  if 'model' in cfg and cfg['model'] == 'e3sm':
-    read_field = read_field_e3sm
-    file_wildcard = '*.ww3.*.nc'
-  else:
-    read_field = read_field_ww3
-    file_wildcard = '*.nc'
+    # Read in and compute fields to plot
+    if nruns > 1:
+      lon,lat,var,output_date = difference_fields(f,cfg['model_direc'][1][1]+filename)
+    else:
+      lon,lat,var,output_date = read_field_ww3(f)
+
+    # Plot timesnap
+    if cfg["timesnaps"]:    
+      title = 'Wave height'+diff+run+' on '+output_date
+      cbar_label = 'wave height'+diff+' (m)'
+      filename = run+'_'+'-'.join(output_date.split())+'.png'
+      if "tsnap_range" in cfg:
+        plot_field(lon,lat,var,cmap,title,cbar_label,filename,cfg['tsnap_range'][0],cfg['tsnap_range'][1])  
+      else:
+        plot_field(lon,lat,var,cmap,title,cbar_label,filename,symmetric_range=symmetric_range)  
+
+###############################################################################################
+###############################################################################################
+
+def determine_plot_type(cfg):
   
   # Find nc file names
   runs = [x[0] for x in cfg['model_direc']]
@@ -79,79 +173,101 @@ if __name__ == '__main__':
   if nruns == 1:
     cmap = 'viridis'
     diff = ''
+    symmetric_range = False
+    run = cfg['model_direc'][0][0]
   elif nruns == 2:
     cmap = 'bwr'
-    diff = ' difference'
-  
-  # Get field output files
-  output_direc = cfg['model_direc'][0][1]
-  files = sorted(glob.glob(output_direc+file_wildcard))
-  
-  count = 0
-  for f in files:
-    filename = f.split('/')[-1]
-    print filename
-  
-    # Read in and compute fields to plot
-    lon,lat,var,output_date = read_field(f)
-    if nruns > 1:
-      lon2,lat2,var2,output_date2 = read_field(cfg['model_direc'][1][1]+filename)
-      if var.shape == var2.shape:
-        var = var-var2
-      elif (var.shape[0] == var2.shape[0]/2) and (var.shape[1] == var2.shape[1]/2):
-        var = var-var2[::2,::2]
-      elif (var.shape[0] == var2.shape[0]*2) and (var.shape[1] == var2.shape[1]*2):
-        var = var[::2,::2]-var2
-        lon = lon2
-        lat = lat2
-  
-    # Accumulate for average
-    count = count + 1
-    if count == 1:
-      var_avg = np.copy(var)
-    else:
-      var_avg = var_avg + var
-    
-    # Plot timesnap
-    if cfg["timesnaps"]:    
-      fig = plt.figure()
-      ax = fig.add_subplot(1,1,1)
-      m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
-                                   llcrnrlon=0,urcrnrlon=360,resolution='c')
-      m.fillcontinents(color='tan',lake_color='lightblue')
-      m.drawcoastlines()
-      if "tsnap_range" in cfg:
-        levels = np.linspace(cfg["tsnap_range"][0],cfg["tsnap_range"][1],100)
-        cf = ax.contourf(lon,lat,var,levels=levels,cmap=cmap)
-      else: 
-        cf = ax.contourf(lon,lat,var,100,cmap=cmap)
-      ax.set_title('Wave height'+diff+' on '+output_date)
-      cbar = plt.colorbar(cf,ax=ax,orientation='horizontal')
-      cbar.set_label('wave height'+diff+' (m)')
-      plt.savefig('-'.join(output_date.split())+'.png')
-      plt.close() 
-    
-  # Compute average
-  var_avg = var_avg/float(count)
-  
-  # Plot average
+    diff = 'difference'
+    symmetric_range = True
+    run = ''
+
+  return nruns,cmap,diff,run,symmetric_range
+
+###############################################################################################
+###############################################################################################
+
+def plot_field(lon,lat,var,cmap,title,cbar_label,filename,range_min=None,range_max=None,symmetric_range=False):
+
   fig = plt.figure()
   m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
                                llcrnrlon=0,urcrnrlon=360,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
   m.drawcoastlines()
-  if "avg_range" in cfg:
-    levels = np.linspace(cfg["avg_range"][0],cfg["avg_range"][1],100)
-    cf = plt.contourf(lon,lat,var_avg,levels=levels,cmap=cmap)
+  if range_min and range_max:
+    levels = np.linspace(range_min,range_max,100)
+  elif symmetric_range:
+    abs_max = np.amax(np.absolute(var))
+    levels = np.linspace(-abs_max,abs_max,100)
   else:
-    cf = plt.contourf(lon,lat,var_avg,100,cmap=cmap)
-  plt.title('Average wave height'+diff)
+    levels = 100
+   
+  cf = plt.contourf(lon,lat,var,levels,cmap=cmap)
+  plt.title(title)
   cbar = plt.colorbar(cf,orientation='horizontal')
-  cbar.set_label('wave height'+diff+' (m)')
-  plt.savefig('average.png')
+  cbar.set_label(cbar_label)
+  plt.savefig(filename)
   plt.close() 
+
+###############################################################################################
+###############################################################################################
+
+if __name__ == '__main__':
+
+  pwd = os.getcwd()
+ 
+  monthly = True
+  yearly = True
+ 
+  # Read in configuration file
+  f = open(pwd+'/plot_fields.config')
+  cfg = yaml.load(f)
+  pprint.pprint(cfg)
+  nruns,cmap,diff,run,symmetric_range = determine_plot_type(cfg)
   
+  # Get field output files
+  output_direc = cfg['model_direc'][0][1]
+  files = sorted(glob.glob(output_direc+'*.nc'))
+  start_year = int(files[0].split('/')[-1].split('.')[1][0:4])
+  end_year = int(files[-1].split('/')[-1].split('.')[1][0:4])
+  
+  if monthly == True:
+    for mnth in range(1,13):
+      print mnth
+
+      if nruns > 1:
+        lon,lat,var_avg = compute_average(start_year,end_year,files,direc2=cfg['model_direc'][1][1],month=mnth)
+      else:
+        lon,lat,var_avg = compute_average(start_year,end_year,files,month=mnth)
+  
+      # Plot average
+      title = 'Average wave height'+diff+run
+      cbar_label = 'wave height'+diff+' (m)'
+      filename = 'average_'+diff.strip()+run+'_month'+str(mnth).zfill(2)+'.png'
+      if 'avg_range' in cfg:
+        plot_field(lon,lat,var_avg,cmap,title,cbar_label,filename,cfg['avg_range'][0],cfg['avg_range'][1])
+      else:
+        plot_field(lon,lat,var_avg,cmap,title,cbar_label,filename,symmetric_range=symmetric_range)  
+  
+  if yearly == True:
+    for year in range(start_year,end_year):
+
+      if nruns > 1:
+        lon,lat,var_avg = compute_average(start_year,end_year,files,direc2=cfg['model_direc'][1][1],year=True)
+      else:
+        lon,lat,var_avg = compute_average(start_year,end_year,files,year=True)
+  
+      # Plot average
+      title = 'Average wave height '+diff+run
+      cbar_label = 'wave height'+diff+' (m)'
+      filename = 'average_'+diff+run+'_year'+str(year).zfill(2)+'.png'
+      if 'avg_range' in cfg:
+        plot_field(lon,lat,var_avg,cmap,title,cbar_label,filename,cfg['avg_range'][0],cfg['avg_range'][1])
+      else:
+        plot_field(lon,lat,var_avg,cmap,title,cbar_label,filename,symmetric_range=symmetric_range)  
+
   # Move plots to their own directory
   if not os.path.exists(cfg["plot_direc"]):
     subprocess.call(['mkdir','-p',cfg["plot_direc"]])
   subprocess.call('mv *.png '+cfg["plot_direc"],shell=True)    
+
+
