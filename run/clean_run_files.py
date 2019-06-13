@@ -8,47 +8,36 @@ import datetime
 
 pwd = os.getcwd()
 
-# Read ww3_run.config to get month
-f = open(pwd+'/ww3_run.config')
-cfg = yaml.load(f)
-pprint.pprint(cfg)
-
-# Define some date strings for later
-start_date = datetime.datetime.strptime(cfg["date_start"],'%m/%d/%Y')
-start_date = datetime.datetime.strftime(start_date,'%Y%m%d')
-end_date   = datetime.datetime.strptime(cfg["date_end"],  '%m/%d/%Y')
-end_date   = datetime.datetime.strftime(end_date,'%Y%m%d')
-year = start_date[0:4]
-
 # Get names of restart files
-first_restart = 'restart.ww3.'+start_date+'_000000'
-last_restart  = 'restart.ww3.'+end_date  +'_000000'
 all_restarts = glob.glob('restart.ww3.*') 
-
-# Get list of intermediate restart files
-if first_restart not in all_restarts:
-  print 'first restart file not found'
-  keep_going = raw_input('continue? ')
-  if keep_going != 'y':
-    raise SystemExit(0)
-else:
-  all_restarts.remove(first_restart)
-if last_restart not in all_restarts:
-  print 'last restart file not found'
-  keep_going = raw_input('continue? ')
-  if keep_going != 'y':
-    raise SystemExit(0)
-else:
+if len(all_restarts) > 0:
+  frmt = '%Y%m%d_%H%M%S'
+  restart_dates = []
+  for restart_file in all_restarts:
+    date = restart_file.split('.')[-1]
+    restart_dates.append(datetime.datetime.strptime(date,frmt))
+  restart_dates.sort()
+  start_date = datetime.datetime.strftime(restart_dates[0],frmt)
+  end_date = datetime.datetime.strftime(restart_dates[-1],frmt)
+  first_restart = 'restart.ww3.'+start_date
+  last_restart  = 'restart.ww3.'+end_date  
+  # Get list of intermediate restart files
+  #all_restarts.remove(first_restart)
   all_restarts.remove(last_restart)
-other_restarts = all_restarts
+  other_restarts = all_restarts
+else:
+  first_restart = 'restart.ww3.XXXXXXXX_XXXXXX'
+  last_restart  = 'restart.ww3.XXXXXXXX_XXXXXX'  
+  other_restarts = [] 
+
 
 # List of commands to be run
 tasks = [{'cmd':'mv', 'files':'log*',       'dest':'results/model_output/log_files'},
          {'cmd':'mv', 'files':'out_pnt*',   'dest':'results/model_output/points'},
          {'cmd':'mv', 'files':'out_grd*',   'dest':'results/model_output/fields'},
-         {'cmd':'mv', 'files':'ww3_*.o*',   'dest':'results/model_output/screen_output'},
-         {'cmd':'mv', 'files':'ww3_*.e*',   'dest':'results/model_output/screen_output'},
-         {'cmd':'mv', 'files':first_restart,'dest':'results/model_output/restarts'},
+         {'cmd':'mv', 'files':'run*.o*',    'dest':'results/model_output/screen_output'},
+         {'cmd':'mv', 'files':'run*.e*',    'dest':'results/model_output/screen_output'},
+         {'cmd':'mv', 'files':last_restart, 'dest':'results/model_output/restarts'},
          {'cmd':'mv', 'files':'*.sub',      'dest':'results/submission_scripts'},
          {'cmd':'rm', 'files':other_restarts}]
 
@@ -76,4 +65,5 @@ for task in tasks:
       command.append(dest_direc)
 
     # Run command
+    print command
     subprocess.call(command)
