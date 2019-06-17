@@ -62,7 +62,7 @@ def difference_fields(file1,file2,variable='hs'):
 ###############################################################################################
 ###############################################################################################
 
-def compute_average(year_start,year_end,files,files2=None,month=None,year=None,season=None):
+def compute_average(year_start,year_end,files,files2=[],month=None,year=None,season=None):
 
   arg_count = 0
   if month != None:
@@ -161,11 +161,12 @@ def plot_timesnaps(files,cfg):
 ###############################################################################################
 ###############################################################################################
 
-def determine_plot_type(cfg):
+def determine_plot_type(run_list=[],nruns=0):
   
   # Find nc file names
-  runs = [x[0] for x in cfg['model_direc']]
-  nruns = len(runs)
+  if nruns == 0:
+    runs = [x[0] for x in run_list]
+    nruns = len(runs)
   
   # Determine plot type based on number of runs
   if nruns > 2:
@@ -175,7 +176,7 @@ def determine_plot_type(cfg):
     cmap = 'viridis'
     diff = ''
     symmetric_range = False
-    run = cfg['model_direc'][0][0]
+    run = run_list[0][0]
   elif nruns == 2:
     cmap = 'bwr'
     diff = 'difference'
@@ -216,36 +217,59 @@ if __name__ == '__main__':
 
   pwd = os.getcwd()
  
-  monthly = False 
+  monthly = True 
   yearly = False 
-  overall = True
+  overall = False 
  
   # Read in configuration file
   f = open(pwd+'/plot_fields.config')
   cfg = yaml.load(f)
   pprint.pprint(cfg)
-  nruns,cmap,diff,run,symmetric_range = determine_plot_type(cfg)
-  
-  # Get field output files
+ 
+  # Set colorbar range if specified
+  avg_range_min = None
+  avg_range_max = None 
+  if 'avg_range' in cfg:
+    avg_range_min = cfg['avg_range'][0]
+    avg_range_max = cfg['avg_range'][1]
+
+  # Determine if single solution or difference of two is requested
+  nitems = len(cfg['model_runs'])
+  if nitems > 1 or len(cfg['model_runs'][0]) > 1:
+    nruns = 2
+  else:
+    nruns = 1
+  nruns,cmap,diff,run,symmetric_range = determine_plot_type(nruns=nruns)
+
   files = []
-  for output_direc in cfg['model_direc'][0][1:]:
-    files.extend(glob.glob(output_direc+'*.nc'))
-  files.sort()
+  files2 = []
+  for j,item in enumerate(cfg['model_runs']):   
+    
+    # Get field output files
+    files.append([])
+    for output_direc in item[0][1:]:
+      files[j].extend(glob.glob(output_direc+'*.nc'))
+    files[j].sort()
+  
+    files2.append([])
+    if nruns > 1:
+      for output_direc in item[1][1:]:
+        files2[j].extend(glob.glob(output_direc+'*.nc'))
+      files2[j].sort()
+  
+    # Get start and end years from filenames
+    start = int(files[j][0].split('/')[-1].split('.')[1][0:4])
+    end = int(files[j][-1].split('/')[-1].split('.')[1][0:4])-1
+    if j == 0:
+      start_year = start
+      end_year = end
+      print start_year
+      print end_year
+    else:
+      if (start != start_year) or (end != end_year):
+        raise SystemExit(0)
 
-  files2 = None
-  if nruns > 1:
-    files2 = []
-    for output_direc in cfg['model_direc'][1][1:]:
-      files2.extend(glob.glob(output_direc+'*.nc'))
-    files2.sort()
-
-  # Get start and end years from filenames
-  start_year = int(files[0].split('/')[-1].split('.')[1][0:4])
-  end_year = int(files[-1].split('/')[-1].split('.')[1][0:4])-1
-  print start_year
-  print end_year
-
-
+  # Set averaging period range
   if monthly:
     avg_periods = range(1,13)
     yearly = None
@@ -256,16 +280,8 @@ if __name__ == '__main__':
     avg_periods = range(1)
     yearly = True
     mnth = None
-
-  avg_range_min = None
-  avg_range_max = None 
-  if 'avg_range' in cfg:
-    avg_range_min = cfg['avg_range'][0]
-    avg_range_max = cfg['avg_range'][1]
   
-    
-
-  
+      
   for i in avg_periods: 
     print i
 
@@ -281,10 +297,16 @@ if __name__ == '__main__':
       mnth = None
       year_start = i
       year_end = i
-     
 
-    lon,lat,var_avg = compute_average(year_start,year_end,files,files2,month=mnth,year=yearly)
- 
+    for j in range(nitems):
+
+      lon,lat,var_avg = compute_average(year_start,year_end,files[j],files2[j],month=mnth,year=yearly)
+
+      if j == 0:
+        var = var_avg
+      else:
+        var = var - var_avg
+
     # Plot average
     cbar_label = 'wave height '+diff+' (m)'
     if monthly:
@@ -293,7 +315,7 @@ if __name__ == '__main__':
     elif yearly:
       title = 'Average wave height '+diff+run+' years '+str(year_start)+'-'+str(year_end)
       filename = 'average_'+diff+run+'_year'+str(year_start)+'-'+str(year_end)+'.png'
-    plot_field(lon,lat,var_avg,cmap,title,cbar_label,filename,avg_range_min,avg_range_max,symmetric_range)  
+    plot_field(lon,lat,var,cmap,title,cbar_label,filename,avg_range_min,avg_range_max,symmetric_range)  
 
 
   # Move plots to their own directory
