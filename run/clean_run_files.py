@@ -32,14 +32,15 @@ else:
 
 
 # List of commands to be run
-tasks = [{'cmd':'mv', 'files':'log*',       'dest':'results/model_output/log_files'},
-         {'cmd':'mv', 'files':'out_pnt*',   'dest':'results/model_output/points'},
-         {'cmd':'mv', 'files':'out_grd*',   'dest':'results/model_output/fields'},
-         {'cmd':'mv', 'files':'run*.o*',    'dest':'results/model_output/screen_output'},
-         {'cmd':'mv', 'files':'run*.e*',    'dest':'results/model_output/screen_output'},
-         {'cmd':'mv', 'files':last_restart, 'dest':'results/model_output/restarts'},
-         {'cmd':'mv', 'files':'*.sub',      'dest':'results/submission_scripts'},
-         {'cmd':'rm', 'files':other_restarts}]
+tasks = [{'cmd':'mv', 'opt':'' , 'files':'log*',       'dest':'results/model_output/log_files'},
+         {'cmd':'mv', 'opt':'' ,'files':'out_pnt*',   'dest':'results/model_output/points'},
+         {'cmd':'mv', 'opt':'' ,'files':'out_grd*',   'dest':'results/model_output/fields'},
+         {'cmd':'mv', 'opt':'' ,'files':'run*.o*',    'dest':'results/model_output/screen_output'},
+         {'cmd':'mv', 'opt':'' ,'files':'run*.e*',    'dest':'results/model_output/screen_output'},
+         {'cmd':'mv', 'opt':'' ,'files':last_restart, 'dest':'results/model_output/restarts'},
+         {'cmd':'mv', 'opt':'' ,'files':'*.sub',      'dest':'results/submission_scripts'},
+         {'cmd':'rm', 'opt':'' ,'files':other_restarts},
+         {'cmd':'ln', 'opt':'-s' ,'files':'results/model_output/restarts/restart.ww3.*'}]
 
 
 for task in tasks:
@@ -60,6 +61,7 @@ for task in tasks:
 
     # Build command
     command = [task['cmd']]
+    command.append(task['opt'])
     command.extend(files)
     if 'dest' in task:
       command.append(dest_direc)
