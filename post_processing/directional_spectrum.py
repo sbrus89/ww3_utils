@@ -86,7 +86,8 @@ def read_model_data(files,mode=None,stations=[]):
           stations['lon'] = np.squeeze(nc_file.variables['longitude'][:])
           stations['lat'] = np.squeeze(nc_file.variables['latitude'][:])
           nstations = len(stations['name'])
-          station_ind = range(nstations)
+          station_ind = slice(nstations)
+          stations2 = stations
         else:
           stations2 = {}
           model_stations = netCDF4.chartostring(nc_file.variables['station_name'][:,:]).tolist()
