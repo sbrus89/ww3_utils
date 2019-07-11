@@ -8,7 +8,13 @@ import glob
 import netCDF4
 import datetime
 import os
-plt.switch_backend('agg')
+import socket
+host = socket.gethostname()
+if host[0:2] == 'gr' or host[0:2] == 'ba':
+  plt.switch_backend('agg')
+  interactive = False
+else:
+  interactive = True
 
 mode = 'validation'
 #mode = 'stats'
@@ -321,6 +327,43 @@ def compute_spectrum(obs_data,variables,mode='average'):
 
   return spectrum
 
+#######################################################################
+#######################################################################
+
+def interp_model_spectrum(theta_model,freq_model,spectrum_model,ndir=0,nfreq=0,freq_max=0.5,Theta=[],Freq=[]):
+  
+  return_interp_grid = False
+  if ndir > 0 and nfreq > 0:
+    # Create grid of interpolation points  
+    theta_interp = np.radians(np.linspace(0.0,360.0,ndir))[np.newaxis].T
+    freq_interp = np.linspace(0.0,freq_max,nfreq)
+    Freq,Theta = np.meshgrid(freq_interp,theta_interp)
+    return_interp_grid = True
+  
+  # Interploate spectrum onto data mesh with evenly spaced freq axis
+  interp = interpolate.RegularGridInterpolator((theta_model,freq_model), spectrum_model, bounds_error=False, fill_value=np.nan)
+  pts = np.vstack((Theta.ravel(),Freq.ravel())).T
+  spectrum_interp = interp(pts)
+  spectrum_interp = np.reshape(spectrum_interp,Theta.shape)
+  
+  # Adjust for WW3 theta convention
+  theta_flat = theta_interp[0:-1].flatten()
+  cols =  np.asarray(range(0,len(freq_interp)))
+  flipped = np.mod(-(theta_flat-np.pi/4.0)+np.pi/4.0,2.0*np.pi)         # Reflect across
+  idx = np.argsort(flipped)                                             # the 45/225 degree line
+  idx = np.ix_(idx,cols)                                                # and rearrange 
+  spectrum_interp = spectrum_interp[idx]
+  flipped = np.mod(-(theta_flat-3.0*np.pi/4.0)+3.0*np.pi/4.0,2.0*np.pi) # Reflect across the
+  idx = np.argsort(flipped)                                             # 135/315 degree line
+  idx = np.ix_(idx,cols)                                                # and rearrange
+  spectrum_interp = spectrum_interp[idx]                           
+  first_col =  spectrum_interp[0,:]                                
+  spectrum_interp = np.vstack((spectrum_interp,first_col[np.newaxis,:]))
+  
+  if return_interp_grid:
+    return Theta,Freq,spectrum_interp
+  else:
+    return spectrum_interp
 
 #######################################################################
 #######################################################################
@@ -376,25 +419,27 @@ def plot_station_spectrum(sta,lon,lat,lon2,lat2,freq1,theta1,spectrum1,labels1,f
     
       if spectrum2 is not None :
      
-        # Interploate spectrum onto data mesh with evenly spaced freq axis
-        interp = interpolate.RegularGridInterpolator((theta2, freq2), spectrum2[i,:,:], bounds_error=False, fill_value=np.nan)
-        pts = np.vstack((Theta1.ravel(),R1.ravel())).T
-        spec2 = interp(pts)
-        spec2 = np.reshape(spec2,Theta1.shape)
+        ## Interploate spectrum onto data mesh with evenly spaced freq axis
+        #interp = interpolate.RegularGridInterpolator((theta2, freq2), spectrum2[i,:,:], bounds_error=False, fill_value=np.nan)
+        #pts = np.vstack((Theta1.ravel(),R1.ravel())).T
+        #spec2 = interp(pts)
+        #spec2 = np.reshape(spec2,Theta1.shape)
 
-        # Adjust for WW3 theta convention
-        theta_flat = theta1[0:-1].flatten()
-        cols =  np.asarray(range(0,len(freq1)))
-        flipped = np.mod(-(theta_flat-np.pi/4.0)+np.pi/4.0,2.0*np.pi)         # Reflect across
-        idx = np.argsort(flipped)                                             # the 45/225 degree line
-        idx = np.ix_(idx,cols)                                                # and rearrange 
-        spec2 = spec2[idx]
-        flipped = np.mod(-(theta_flat-3.0*np.pi/4.0)+3.0*np.pi/4.0,2.0*np.pi) # Reflect across the
-        idx = np.argsort(flipped)                                             # 135/315 degree line
-        idx = np.ix_(idx,cols)                                                # and rearrange
-        spec2 = spec2[idx]
-        first_col =  spec2[0,:]
-        spec2 = np.vstack((spec2,first_col[np.newaxis,:]))
+        ## Adjust for WW3 theta convention
+        #theta_flat = theta1[0:-1].flatten()
+        #cols =  np.asarray(range(0,len(freq1)))
+        #flipped = np.mod(-(theta_flat-np.pi/4.0)+np.pi/4.0,2.0*np.pi)         # Reflect across
+        #idx = np.argsort(flipped)                                             # the 45/225 degree line
+        #idx = np.ix_(idx,cols)                                                # and rearrange 
+        #spec2 = spec2[idx]
+        #flipped = np.mod(-(theta_flat-3.0*np.pi/4.0)+3.0*np.pi/4.0,2.0*np.pi) # Reflect across the
+        #idx = np.argsort(flipped)                                             # 135/315 degree line
+        #idx = np.ix_(idx,cols)                                                # and rearrange
+        #spec2 = spec2[idx]
+        #first_col =  spec2[0,:]
+        #spec2 = np.vstack((spec2,first_col[np.newaxis,:]))
+
+        spec2 = interp_model_spectrum(theta2,freq2,spectrum2[i,:,:],Theta1,R1)
 
         # Plot spectrum
         ax = fig.add_subplot(gs[1,1],polar=True)
