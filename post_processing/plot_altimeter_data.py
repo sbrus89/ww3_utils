@@ -141,20 +141,28 @@ def plot_altimeter_data(lon_vec,lat_vec,swh,filename,plot_type='field'):
   if plot_type == 'field':
     cmap = 'viridis'
     levels = np.linspace(0.0,10.0,50)
+    label = 'Significant wave height (m)'
+    ticks = []
   elif plot_type == 'difference':
     cmap = 'bwr'
     abs_max = np.nanmax(np.absolute(swh))
     levels = np.linspace(-abs_max,abs_max,100)
+    ticks = [-abs_max, -0.5*abs_max, 0.0, 0.5*abs_max,abs_max]
+    label = 'Percent difference in SWH'
 
-  plt.figure(figsize=(14, 6))
+  plt.figure(figsize=(7, 4.5))
   m = Basemap(projection='cyl',lon_0=0.0, llcrnrlat= -90,urcrnrlat=90,\
                                llcrnrlon=0,urcrnrlon=360,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
   m.drawcoastlines()
 
   cf = plt.contourf(lon_vec,lat_vec,swh,levels,cmap=cmap)
-  plt.colorbar(cf,orientation='horizontal')
-  plt.savefig(filename)
+  cb = plt.colorbar(cf,orientation='horizontal')
+  cb.set_label(label)
+  if ticks:
+    cb.set_ticks(ticks)
+  plt.tight_layout()
+  plt.savefig(filename,bbox_inches='tight')
   plt.close()
 
 ###############################################################################
@@ -170,7 +178,7 @@ def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,fil
     plot_altimeter_data(lon_vec,lat_vec,swh_model,filename)
   if altimeter_files and ww3_files:
     filename = 'swh_diff_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
-    diff = swh_model-swh_obs
+    diff = np.divide(swh_model-swh_obs,swh_obs)*100.0
     idx = np.where(np.absolute(diff) > 1e10)
     diff[idx] = np.nan
     plot_altimeter_data(lon_vec,lat_vec,diff,filename,plot_type='difference')
