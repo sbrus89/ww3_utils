@@ -28,26 +28,29 @@ else:
 
 run_direcs = ['./test_model_data/']
 
-#interactive = False
-k = 25 
-#method = 'agglomerative'
-method = 'kmeans'
-#method = 'mixture'
+interactive = False
+k_vals = [16,25,36] 
+cluster_methods = ['agglomerative','kmeans','mixture']
+#k_vals = [16]
+#cluster_methods = ['kmeans']
 normalize = True
 error_metrics = ['RMSE','SMAPE','R2'] 
 lat_min = -65.0
 lat_max = 65.0
+#lat_min = -90.0
+#lat_max = 90.0
+month = 7
 
 ##########################################################################
 ##########################################################################
 
-def get_averaged_model_spectra(run_direcs,normalize):
+def get_averaged_model_spectra(run_direcs,month,normalize):
 
   # Read in and average model results
   print 'Averaging station spectra'
   run_files = []
   for direc in run_direcs:
-    run_files.extend(sorted(glob.glob(direc+'spec.200201*T00Z_spec.nc')))
+    run_files.extend(sorted(glob.glob(direc+'spec.????'+str(month).zfill(2)+'*T00Z_spec.nc')))
   if len(run_files) > 0:
     run_data,run_stations = directional_spectrum.read_model_data(run_files,'average')
 
@@ -220,12 +223,12 @@ def get_colormap(k):
   cmap = ListedColormap(np.vstack((cmap1,cmap2)))
   cmap = ListedColormap(cmap(range(k)))
 
-  # Plot colors
-  fig = plt.figure()
-  x = np.arange(k)
-  plt.scatter(x,x,c=x,cmap=cmap)
-  fig.savefig('colors.png',bbox_inches='tight')
-  plt.close()
+  ## Plot colors
+  #fig = plt.figure()
+  #x = np.arange(k)
+  #plt.scatter(x,x,c=x,cmap=cmap)
+  #fig.savefig('colors.png',bbox_inches='tight')
+  #plt.close()
 
   return cmap
 
@@ -294,14 +297,35 @@ def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,st
       vmax = 1.0
       vmin = 0.0
 
-  fig = plt.figure(figsize=[18.0,6.0])
+  fig = plt.figure(figsize=[16.0,6.0])
   m = Basemap(projection='cyl',llcrnrlat=np.amin(station_lat),urcrnrlat=np.amax(station_lat),\
-                               llcrnrlon=-180,urcrnrlon=180,resolution='c')
+                               llcrnrlon=0,urcrnrlon=360,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
   m.drawcoastlines()
-  cax = plt.scatter(run_stations['lon'],run_stations['lat'],c=cluster_error,vmax=vmax,vmin=vmin)
+  cax = plt.scatter(np.mod(station_lon+360,360),station_lat,c=cluster_error,vmax=vmax,vmin=vmin)
   cb = fig.colorbar(cax)
+  plt.title(method+' '+metric+' values for k='+str(k))
   fig.savefig('cluster_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
+  plt.close()
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.hist(cluster_error,range=(vmin,vmax),bins=20,cumulative=True)
+  ax2 = ax.twinx()
+  ax_ylim = ax.get_ylim()
+  ax2.set_ylim([0,ax_ylim[1]/cluster_error.size*100])
+  plt.title(method+' '+metric+' cdf for k='+str(k))
+  fig.savefig('cdf_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
+  plt.close()
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.hist(cluster_error,range=(vmin,vmax),bins=20)
+  ax2 = ax.twinx()
+  ax_ylim = ax.get_ylim()
+  ax2.set_ylim([0,ax_ylim[1]/cluster_error.size*100])
+  plt.title(method+' '+metric+' histogram for k='+str(k))
+  fig.savefig('hist_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
   plt.close()
 
 ##########################################################################
@@ -352,19 +376,22 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
     plt.show()
 
   # Plot scatterplot of clustered stations
-  fig = plt.figure(figsize=[18.0,6.0])
+  fig = plt.figure(figsize=[16.0,6.0])
   m = Basemap(projection='cyl',llcrnrlat=np.amin(station_lat),urcrnrlat=np.amax(station_lat),\
-                               llcrnrlon=-180,urcrnrlon=180,resolution='c')
+                               llcrnrlon=0,urcrnrlon=360,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
   m.drawcoastlines()
+  plt.title(method+' clusters for k='+str(k))
   if interactive:
-    plt.scatter(station_lon,station_lat,c=labels,cmap=cmap,picker=True)
+    cax = plt.scatter(station_lon+180.0,station_lat,c=labels,cmap=cmap,picker=True)
     fig.canvas.mpl_connect('pick_event',onpick)
+    cb = fig.colorbar(cax)
     fig.tight_layout()
     plt.plot()
     plt.show()
   else:
-    plt.scatter(station_lon,station_lat,c=labels,cmap=cmap)
+    cax = plt.scatter(np.mod(station_lon+360,360),station_lat,c=labels,cmap=cmap)
+    cb = fig.colorbar(cax)
     fig.tight_layout()
   fig.savefig('clustered_spectrum_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
   plt.close()
@@ -374,23 +401,26 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
 
 if __name__ == '__main__':
 
-  run_data,run_stations,model_spectra = get_averaged_model_spectra(run_direcs,normalize)
+  run_data,run_stations,model_spectra = get_averaged_model_spectra(run_direcs,month,normalize)
   
-  # Preform clustering
-  labels,clustered_spectra,k = cluster_spectra(k,method,model_spectra,run_stations)
-  
-  # Compute colormap
-  cmap = get_colormap(k)
+  for method in cluster_methods:
+    for k in k_vals: 
 
-  # Plot grid of cluster centers
-  plot_cluster_grid(k,method,clustered_spectra,run_data['theta'],run_data['freq'],cmap)
-   
-  # Compute and plot the error between station spectra and cluster centers
-  for metric in error_metrics:
-    plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,run_stations['lon'],run_stations['lat'])  
-
-  # Plot scatter plot of clustered stations
-  plot_station_scatter(k,method,labels,run_stations['lon'],run_stations['lat'],run_data['theta'],run_data['freq'],clustered_spectra,model_spectra,cmap)
+      # Preform clustering
+      labels,clustered_spectra,k = cluster_spectra(k,method,model_spectra,run_stations)
+      
+      # Compute colormap
+      cmap = get_colormap(k)
+    
+      # Plot grid of cluster centers
+      plot_cluster_grid(k,method,clustered_spectra,run_data['theta'],run_data['freq'],cmap)
+       
+      # Compute and plot the error between station spectra and cluster centers
+      for metric in error_metrics:
+        plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,run_stations['lon'],run_stations['lat'])  
+    
+      # Plot scatter plot of clustered stations
+      plot_station_scatter(k,method,labels,run_stations['lon'],run_stations['lat'],run_data['theta'],run_data['freq'],clustered_spectra,model_spectra,cmap)
 
 
 
