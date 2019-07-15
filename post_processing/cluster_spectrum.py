@@ -29,12 +29,14 @@ else:
 run_direcs = ['./test_model_data/']
 
 #interactive = False
-k = 16 
+k = 25 
 #method = 'agglomerative'
 method = 'kmeans'
 #method = 'mixture'
 normalize = True
 error_metrics = ['RMSE','SMAPE','R2'] 
+lat_min = -65.0
+lat_max = 65.0
 
 ##########################################################################
 ##########################################################################
@@ -45,7 +47,7 @@ def get_averaged_model_spectra(run_direcs,normalize):
   print 'Averaging station spectra'
   run_files = []
   for direc in run_direcs:
-    run_files.extend(sorted(glob.glob(direc+'spec.200207*T00Z_spec.nc')))
+    run_files.extend(sorted(glob.glob(direc+'spec.200201*T00Z_spec.nc')))
   if len(run_files) > 0:
     run_data,run_stations = directional_spectrum.read_model_data(run_files,'average')
 
@@ -81,6 +83,23 @@ def get_averaged_model_spectra(run_direcs,normalize):
   run_stations['lon'] = run_stations['lon'][nonice_stations]
   run_stations['lat'] = run_stations['lat'][nonice_stations]
   nstations = len(run_stations['name'])
+
+  # Get rid of stations at high latitudes
+  in_stations = []
+  out_stations = []
+  for sta,lat in enumerate(run_stations['lat']):
+    if lat <= lat_max and lat >= lat_min:
+      in_stations.append(sta)
+    else: 
+      out_stations.append(sta)
+  spectrum = np.delete(spectrum,out_stations,0)
+  print spectrum.shape
+
+  run_stations['name'] = [run_stations['name'][i] for i in in_stations]
+  run_stations['lon'] = run_stations['lon'][in_stations]
+  run_stations['lat'] = run_stations['lat'][in_stations]
+  nstations = len(run_stations['name'])
+    
 
   # Normalize the spectra
   if normalize:
@@ -276,7 +295,7 @@ def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,st
       vmin = 0.0
 
   fig = plt.figure(figsize=[18.0,6.0])
-  m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
+  m = Basemap(projection='cyl',llcrnrlat=np.amin(station_lat),urcrnrlat=np.amax(station_lat),\
                                llcrnrlon=-180,urcrnrlon=180,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
   m.drawcoastlines()
@@ -334,7 +353,7 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
 
   # Plot scatterplot of clustered stations
   fig = plt.figure(figsize=[18.0,6.0])
-  m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
+  m = Basemap(projection='cyl',llcrnrlat=np.amin(station_lat),urcrnrlat=np.amax(station_lat),\
                                llcrnrlon=-180,urcrnrlon=180,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
   m.drawcoastlines()
@@ -345,7 +364,7 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
     plt.plot()
     plt.show()
   else:
-    plt.scatter(run_stations['lon'],run_stations['lat'],c=labels,cmap=cmap)
+    plt.scatter(station_lon,station_lat,c=labels,cmap=cmap)
     fig.tight_layout()
   fig.savefig('clustered_spectrum_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
   plt.close()
