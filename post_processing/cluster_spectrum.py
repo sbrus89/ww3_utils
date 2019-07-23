@@ -1,11 +1,14 @@
 import glob
+import time
 import socket
 import sys
 import numpy as np
-from matplotlib import cm
+from matplotlib import cm,ticker
 from matplotlib.transforms import Bbox
 from matplotlib.patches import Rectangle
 from matplotlib.colors import ListedColormap
+from matplotlib.colors import LogNorm 
+import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from scipy import interpolate
@@ -15,8 +18,10 @@ import directional_spectrum
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN 
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import SpectralClustering
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
+from sklearn.metrics import r2_score
 np.set_printoptions(threshold=sys.maxsize,linewidth=1000)
 
 host = socket.gethostname()
@@ -28,13 +33,13 @@ else:
 
 run_direcs = ['./test_model_data/']
 
-interactive = False
-k_vals = [16,25,36] 
-cluster_methods = ['agglomerative','kmeans','mixture']
-#k_vals = [16]
-#cluster_methods = ['kmeans']
+#interactive = False
+#k_vals = [16,25,36] 
+#cluster_methods = ['agglomerative','kmeans','mixture']
+k_vals = [16]
+cluster_methods = ['kmeans']
 normalize = True
-error_metrics = ['RMSE','SMAPE','R2'] 
+error_metrics = ['RMSE','L2','SMAPE','R2'] 
 lat_min = -65.0
 lat_max = 65.0
 #lat_min = -90.0
@@ -87,14 +92,21 @@ def get_averaged_model_spectra(run_direcs,month,normalize):
   run_stations['lat'] = run_stations['lat'][nonice_stations]
   nstations = len(run_stations['name'])
 
-  # Get rid of stations at high latitudes
+  # Get rid of stations in certain locations 
   in_stations = []
   out_stations = []
   for sta,lat in enumerate(run_stations['lat']):
-    if lat <= lat_max and lat >= lat_min:
-      in_stations.append(sta)
-    else: 
+    lon = run_stations['lon'][sta]
+    if lat > lat_max or lat < lat_min:                                  # high latitudes
       out_stations.append(sta)
+    elif lon > 0.0 and lon < 40.0 and lat > 30.0 and lat < 45:          # Mediterranean Sea
+      out_stations.append(sta)
+    elif lon > -100.0 and lon < -65.0 and lat > 50.0 and lat < lat_max: # Hudson Bay
+      out_stations.append(sta)
+    elif lon > 47.5 and lon < 56.5 and lat > 23.5 and lat < 30.0:       # Persian Gulf
+      out_stations.append(sta)
+    else: 
+      in_stations.append(sta)
   spectrum = np.delete(spectrum,out_stations,0)
   print spectrum.shape
 
@@ -171,9 +183,44 @@ def compute_connectivity(stations):
 ##########################################################################
 ##########################################################################
 
+def calculate_cluster_averages(k,labels,model_spectra):
+
+  cluster_averages = np.zeros((k,model_spectra.shape[1]))
+  print cluster_averages.shape
+  print model_spectra.shape
+  for i in range(k):
+    idx, = np.where(labels==i)
+    cluster_averages[i,:] = np.mean(model_spectra[idx,:],axis=0)
+
+  return cluster_averages
+
+##########################################################################
+##########################################################################
+
+def calculate_R2(x,y):
+  
+  xbar = np.mean(x)
+  ybar = np.mean(y)
+  top = np.dot(x-xbar,y-ybar)
+  bottom = np.sqrt(np.dot(x-xbar,x-xbar))*np.sqrt(np.dot(y-ybar,y-ybar))
+  r_value = top/bottom
+
+  return r_value**2
+
+##########################################################################
+##########################################################################
+
+def calculate_SMAPE(x,y):
+
+  return np.mean(np.divide(np.absolute(x-y),np.absolute(x)+np.absolute(y)))
+
+##########################################################################
+##########################################################################
+
 def cluster_spectra(k,method,spectrum,run_stations):
 
   print 'Performing '+method+' clustering'
+  t0 = time.time()
   if method == 'kmeans':
     clustered = KMeans(n_clusters=k,random_state=0).fit(spectrum)
     spec = clustered.cluster_centers_
@@ -203,13 +250,15 @@ def cluster_spectra(k,method,spectrum,run_stations):
     #clustered = AgglomerativeClustering(n_clusters=k,linkage='ward',connectivity=station_connectivity).fit(spectrum)
     clustered = AgglomerativeClustering(n_clusters=k,linkage='ward').fit(spectrum)
     labels = clustered.labels_
-    spec = np.zeros((k,spectrum.shape[1]))
-    print spec.shape
-    print spectrum.shape
-    for i in range(k):
-      idx, = np.where(labels==i)
-      spec[i,:] = np.mean(spectrum[idx,:],axis=0)
-
+    spec = calculate_cluster_averages(k,labels,spectrum) 
+  elif method == 'spectral':
+    #clustered = SpectralClustering(n_clusters=k,affinity=calculate_R2,random_state=0).fit(spectrum)
+    clustered = SpectralClustering(n_clusters=k,affinity='linear',random_state=0).fit(spectrum)
+    labels = clustered.labels_
+    spec = calculate_cluster_averages(k,labels,spectrum) 
+  t1 = time.time()
+  print "elapsed time = ",t1-t0
+    
   return labels,spec,k
 
 ##########################################################################
@@ -253,8 +302,10 @@ def plot_cluster_grid(k,method,clustered_spectra,theta,freq,cmap):
     ax = fig.add_subplot(n,n,i+1,polar=True)
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
-    cax = ax.contourf(Theta,Freq,spec_interp,30)
-    cb = fig.colorbar(cax)
+    cax = ax.pcolormesh(Theta,Freq,spec_interp,norm=colors.LogNorm(vmin=1e-3,vmax=1.0))
+    cb = fig.colorbar(cax,ticks=ticker.LogLocator(subs=range(10)),fraction=0.07, pad=0.1)
+    ax.plot(np.linspace(0,2*np.pi,100), np.linspace(0,0.5,100), color='k', ls='none') 
+    ax.grid()
   
   # Plot color of cluster behind each subplot
   fig.tight_layout()
@@ -285,7 +336,11 @@ def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,st
     #spectrum_cluster = (spectrum_cluster-row_min)/(row_max-row_min)
     if metric == 'RMSE':
       cluster_error[sta] = np.sqrt(np.mean(np.square(spectrum_model-spectrum_cluster)))
-      vmax = np.amax(cluster_error)
+      vmax = 0.75*np.amax(cluster_error)
+      vmin = np.amin(cluster_error)
+    elif metric == 'L2':
+      cluster_error[sta] = np.sqrt(np.sum(np.square(spectrum_model-spectrum_cluster)))
+      vmax = 0.75*np.amax(cluster_error)
       vmin = np.amin(cluster_error)
     elif metric == 'SMAPE':
       cluster_error[sta] = np.mean(np.divide(np.absolute(spectrum_model-spectrum_cluster),np.absolute(spectrum_model)+np.absolute(spectrum_cluster)))
@@ -383,7 +438,7 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
   m.drawcoastlines()
   plt.title(method+' clusters for k='+str(k))
   if interactive:
-    cax = plt.scatter(station_lon+180.0,station_lat,c=labels,cmap=cmap,picker=True)
+    cax = plt.scatter(np.mod(station_lon+360,360),station_lat,c=labels,cmap=cmap,picker=True)
     fig.canvas.mpl_connect('pick_event',onpick)
     cb = fig.colorbar(cax)
     fig.tight_layout()
