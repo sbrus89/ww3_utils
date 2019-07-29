@@ -168,6 +168,41 @@ def plot_altimeter_data(lon_vec,lat_vec,swh,filename,plot_type='field'):
 ###############################################################################
 ###############################################################################
 
+def plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename):
+
+  # Create gridded latitude array
+  Lon,Lat = np.meshgrid(lon_vec,lat_vec)
+ 
+  # Get rid bad values
+  idx = np.where(np.absolute(swh_model) > 1e10)
+  swh_model[idx] = np.nan
+
+  # Set max for x and y axes
+  #swh_max = max(np.nanmax(swh_model),np.nanmax(swh_obs))
+  swh_max = 9.0
+ 
+  # Limit to only low latitudes  
+  #idx = np.where(Lat > -40.0)
+  #swh_model[idx] = np.nan
+
+  fig = plt.figure()
+  ax = fig.gca()
+  sc = ax.scatter(swh_obs.ravel(),swh_model.ravel(),c=Lat.ravel(),vmin=-80.0,vmax=80.0)
+  cb = plt.colorbar(sc,orientation='vertical')
+  ax.plot([0.0,swh_max],[0.0,swh_max],'k')
+  ax.set_xlim(0.0,swh_max)
+  ax.set_ylim(0.0,swh_max)
+  ax.set_xlabel('Observed')
+  ax.set_ylabel('Modeled')
+  cb.set_label('Degrees Latitude')
+  fig.tight_layout()
+  plt.savefig(filename,bbox_inches='tight')
+  plt.close()
+  
+
+###############################################################################
+###############################################################################
+
 def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,filename_id):
 
   if altimeter_files:
@@ -182,6 +217,8 @@ def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,fil
     idx = np.where(np.absolute(diff) > 1e10)
     diff[idx] = np.nan
     plot_altimeter_data(lon_vec,lat_vec,diff,filename,plot_type='difference')
+    filename = 'swh_comp_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
+    plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename)
 
 ###############################################################################
 ###############################################################################
