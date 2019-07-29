@@ -115,6 +115,7 @@ def compute_average(year_start,year_end,files,files2=[],month=None,year=None,sea
           # Read in and compute fields to plot
           if files2:
             lon,lat,var,output_date = difference_fields(f,files2[i])
+            print f,files2[i]
           else:
             lon,lat,var,output_date = read_field_ww3(f)
     
@@ -190,7 +191,7 @@ def determine_plot_type(run_list=[],nruns=0):
 
 def plot_field(lon,lat,var,cmap,title,cbar_label,filename,range_min=None,range_max=None,symmetric_range=False):
 
-  fig = plt.figure()
+  fig = plt.figure(figsize=[18.0,9.0])
   m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
                                llcrnrlon=0,urcrnrlon=360,resolution='c')
   m.fillcontinents(color='tan',lake_color='lightblue')
@@ -200,6 +201,7 @@ def plot_field(lon,lat,var,cmap,title,cbar_label,filename,range_min=None,range_m
   elif symmetric_range:
     abs_max = np.amax(np.absolute(var))
     levels = np.linspace(-abs_max,abs_max,100)
+    print levels
   else:
     levels = 100
    
@@ -299,11 +301,10 @@ if __name__ == '__main__':
       year_end = i
 
     for j in range(nitems):
-
       lon,lat,var_avg = compute_average(year_start,year_end,files[j],files2[j],month=mnth,year=yearly)
 
       if j == 0:
-        var = var_avg
+        var = np.copy(var_avg)
       else:
         var = var - var_avg
 
