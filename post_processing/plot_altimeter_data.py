@@ -8,6 +8,8 @@ import calendar
 from skimage.measure import block_reduce
 plt.switch_backend('agg')
 
+write_nc = True
+
 ###############################################################################################
 ###############################################################################################
 
@@ -120,7 +122,10 @@ def compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,mont
         filename = f.split('/')[-1]
 
         file_date = filename.split('.')[1]
-        file_datetime = datetime.datetime.strptime(file_date,'%Y%m%dT%HZ')
+        try:
+          file_datetime = datetime.datetime.strptime(file_date,'%Y%m%dT%HZ')
+        except ValueError:
+          continue
 
         if (file_datetime >= month_start) and (file_datetime <= month_end):
           print filename
@@ -205,6 +210,8 @@ def plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename):
 
 def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,filename_id):
 
+    
+
   if altimeter_files:
     filename = 'swh_obs_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
     plot_altimeter_data(lon_vec,lat_vec,swh_obs,filename)
@@ -219,6 +226,23 @@ def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,fil
     plot_altimeter_data(lon_vec,lat_vec,diff,filename,plot_type='difference')
     filename = 'swh_comp_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
     plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename)
+
+  if write_nc:
+    filename = filename.split('.')[0]+'.nc'
+    nc_file = netCDF4.Dataset(filename,'w')
+    nc_file.createDimension('lon',lon_vec.size)
+    nc_file.createDimension('lat',lat_vec.size)
+    lon_nc = nc_file.createVariable('lon','f8',('lon',))
+    lat_nc = nc_file.createVariable('lat','f8',('lat',))
+    model_nc = nc_file.createVariable('swh_model','f8',('lat','lon'))
+    obs_nc = nc_file.createVariable('swh_obs','f8',('lat','lon'))
+    lon_nc[:] = lon_vec
+    lat_nc[:] = lat_vec
+    model_nc[:] = swh_model
+    obs_nc[:] = swh_obs
+    nc_file.close()
+    
+  
 
 ###############################################################################
 ###############################################################################
