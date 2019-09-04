@@ -1,4 +1,7 @@
 import netCDF4
+import os
+import pprint
+import yaml
 import glob
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
@@ -7,8 +10,6 @@ import datetime
 import calendar
 from skimage.measure import block_reduce
 plt.switch_backend('agg')
-
-write_nc = True
 
 ###############################################################################################
 ###############################################################################################
@@ -208,7 +209,7 @@ def plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename):
 ###############################################################################
 ###############################################################################
 
-def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,filename_id):
+def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,filename_id,write_nc):
 
     
 
@@ -261,25 +262,22 @@ def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,fil
 
 if __name__ == '__main__':
 
-    monthly = True 
-    seasonal = False
-    yearly = False 
-
-    ww3_direcs = ['/users/sbrus/scratch4/WW3_CFSR_2000-2010/2002/run00/results/model_data/fields/',
-                  '/users/sbrus/scratch4/WW3_CFSR_2000-2010/2003/run00/results/model_data/fields/']
-    altimeter_direcs = ['/users/sbrus/scratch4/WW3_CFSR_2000-2010/2002/observed_data/altimeter/',
-                        '/users/sbrus/scratch4/WW3_CFSR_2000-2010/2003/observed_data/altimeter/']
+    # Read in config file
+    pwd = os.getcwd()
+    f = open(pwd+'/plot_altimeter_data.config')
+    cfg = yaml.load(f)
+    pprint.pprint(cfg)
 
     # Find altimeter data files
     altimeter_files = []
-    for direc in altimeter_direcs:
+    for direc in cfg['altimeter_direcs']:
       altimeter_files.extend(glob.glob(direc+'*.nc'))
     altimeter_files.sort()
     print altimeter_files
 
     # Find model output files
     ww3_files = []
-    for direc in ww3_direcs:
+    for direc in cfg['ww3_direcs']:
       ww3_files.extend(glob.glob(direc+'*.nc'))
     ww3_files.sort()
 
@@ -288,21 +286,21 @@ if __name__ == '__main__':
     year_end = int(ww3_files[-1].split('/')[-1].split('.')[1][0:4])-1
 
   
-    if monthly == True:
+    if cfg['monthly'] == True:
       for mnth in range(1,13):
    
         lon_vec,lat_vec,swh_obs,swh_model = compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,month=mnth)
-        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_month'+str(mnth).zfill(2))        
+        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_month'+str(mnth).zfill(2),cfg['write_nc'])        
 
-    if seasonal == True:
+    if cfg['seasonal'] == True:
       for season in ['winter','spring','summer','fall']:
 
         lon_vec,lat_vec,swh = compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,season=season)
-        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_'+season)        
+        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_'+season,cfg['write_nc'])        
 
-    if yearly == True:
+    if cfg['yearly'] == True:
       for year in range(year_start,year_end+1):
  
         lon_vec,lat_vec,swh = compute_altimeter_average(year,year,altimeter_files,ww3_files,year=True)
-        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_year'+str(year).zfill(2))        
+        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_year'+str(year).zfill(2),cfg['write_nc'])        
    
