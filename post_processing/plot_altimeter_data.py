@@ -240,6 +240,18 @@ def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,fil
     lat_nc[:] = lat_vec
     model_nc[:] = swh_model
     obs_nc[:] = swh_obs
+    lon_nc.units = "degree_east" 
+    lon_nc.long_name = "longitude" 
+    lon_nc.standard_name = "longitude" 
+    lon_nc.valid_min = -180.0 
+    lon_nc.valid_max = 360.0 
+    lon_nc.axis = "N"
+    lat_nc.units = "degree_north" 
+    lat_nc.long_name = "latitude" 
+    lat_nc.standard_name = "latitude" 
+    lat_nc.valid_min = -90.0 
+    lat_nc.valid_max = 180.0 
+    lat_nc.axis = "Y"
     nc_file.close()
     
   
