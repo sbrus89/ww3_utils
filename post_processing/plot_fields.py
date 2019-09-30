@@ -1,8 +1,6 @@
-import netCDF4 
-import matplotlib.pyplot as plt
-
-from mpl_toolkits.basemap import Basemap
 import numpy as np
+import matplotlib.pyplot as plt
+import netCDF4 
 import glob
 import datetime
 import calendar
@@ -62,7 +60,7 @@ def difference_fields(file1,file2,variable='hs'):
 ###############################################################################################
 ###############################################################################################
 
-def compute_average(year_start,year_end,files,files2=[],month=None,year=None,season=None):
+def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=None,season=None):
 
   arg_count = 0
   if month != None:
@@ -118,17 +116,36 @@ def compute_average(year_start,year_end,files,files2=[],month=None,year=None,sea
             print f,files2[i]
           else:
             lon,lat,var,output_date = read_field_ww3(f)
-    
-          # Initialize average array
-          if count == 0:
-            var_avg = np.zeros(var.shape)
+          var = var.filled(fill_value=0.0)
+ 
+          if metric == 'average':
+            # Initialize average array
+            if count == 0:
+              var_avg = np.zeros(var.shape)
+            # Accumulate for average 
+            var_avg = var_avg + var
+          elif metric == 'max':
+            # Initialize max array
+            if count == 0:
+              var_avg = np.zeros_like(var)-1e36
+            var_avg = np.maximum(var_avg,var)
+          elif metric == 'absmax':
+            # Initialize max array
+            if count == 0:
+              var_avg = np.zeros_like(var)-1e36
+            var_avg = np.maximum(var_avg,np.absolute(var))
+            print np.amax(var_avg)
+          elif metric == 'min':
+            # Initialize min array
+            if count == 0:
+              var_avg = np.zeros_like(var)+1e36
+            var_avg = np.minimum(var_avg,var)
 
-          # Accumulate for average
-          var_avg = var_avg + var
           count = count + 1
     
-  # Compute average
-  var_avg = var_avg/float(count)
+  if metric == 'average':
+    # Compute average
+    var_avg = var_avg/float(count)
 
   return lon,lat,var_avg
 
@@ -162,7 +179,7 @@ def plot_timesnaps(files,cfg):
 ###############################################################################################
 ###############################################################################################
 
-def determine_plot_type(run_list=[],nruns=0):
+def determine_plot_type(run_list=[],nruns=0,range_min=None,range_max=None):
   
   # Find nc file names
   if nruns == 0:
@@ -178,10 +195,20 @@ def determine_plot_type(run_list=[],nruns=0):
     diff = ''
     symmetric_range = False
     run = run_list[0][0]
-  elif nruns == 2:
+  elif nruns == 2 and not range_min and not range_max: 
     cmap = 'bwr'
     diff = 'difference'
     symmetric_range = True
+    run = ''
+  elif nruns == 2 and abs(range_min) == range_max: 
+    cmap = 'bwr'
+    diff = 'difference'
+    symmetric_range = True
+    run = ''
+  elif nruns == 2:
+    cmap = 'viridis'
+    diff = 'difference'
+    symmetric_range = False
     run = ''
 
   return nruns,cmap,diff,run,symmetric_range
@@ -191,6 +218,9 @@ def determine_plot_type(run_list=[],nruns=0):
 
 def plot_field(lon,lat,var,cmap,title,cbar_label,filename,range_min=None,range_max=None,symmetric_range=False):
 
+  idx = np.where(np.absolute(var) > 1e10)
+  var[idx] = np.nan
+
   fig = plt.figure(figsize=[18.0,9.0])
   m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
                                llcrnrlon=0,urcrnrlon=360,resolution='c')
@@ -199,11 +229,12 @@ def plot_field(lon,lat,var,cmap,title,cbar_label,filename,range_min=None,range_m
   if range_min and range_max:
     levels = np.linspace(range_min,range_max,100)
   elif symmetric_range:
-    abs_max = np.amax(np.absolute(var))
+    abs_max = np.nanmax(np.absolute(var))
     levels = np.linspace(-abs_max,abs_max,100)
     print levels
   else:
     levels = 100
+
    
   cf = plt.contourf(lon,lat,var,levels,cmap=cmap)
   plt.title(title)
@@ -229,11 +260,16 @@ if __name__ == '__main__':
   pprint.pprint(cfg)
  
   # Set colorbar range if specified
-  avg_range_min = None
-  avg_range_max = None 
+  avg_range_min = None 
+  avg_range_max = None
   if 'avg_range' in cfg:
     avg_range_min = cfg['avg_range'][0]
     avg_range_max = cfg['avg_range'][1]
+
+  if 'metric' in cfg:
+    metric = cfg['metric']
+  else:
+    metric = 'average'
 
   # Determine if single solution or difference of two is requested
   nitems = len(cfg['model_runs'])
@@ -241,7 +277,8 @@ if __name__ == '__main__':
     nruns = 2
   else:
     nruns = 1
-  nruns,cmap,diff,run,symmetric_range = determine_plot_type(nruns=nruns)
+
+  nruns,cmap,diff,run,symmetric_range = determine_plot_type(nruns=nruns,range_min=avg_range_min,range_max=avg_range_max)
 
   files = []
   files2 = []
@@ -301,7 +338,7 @@ if __name__ == '__main__':
       year_end = i
 
     for j in range(nitems):
-      lon,lat,var_avg = compute_average(year_start,year_end,files[j],files2[j],month=mnth,year=yearly)
+      lon,lat,var_avg = compute_metric(metric,year_start,year_end,files[j],files2[j],month=mnth,year=yearly)
 
       if j == 0:
         var = np.copy(var_avg)
@@ -311,11 +348,11 @@ if __name__ == '__main__':
     # Plot average
     cbar_label = 'wave height '+diff+' (m)'
     if monthly:
-      title = 'Average wave height '+diff+run+' for month '+str(mnth).zfill(2)+' years '+str(year_start)+'-'+str(year_end)
-      filename = 'average_'+diff+run+'_month'+str(mnth).zfill(2)+'_year'+str(year_start)+'-'+str(year_end)+'.png'
+      title = metric +' wave height '+diff+run+' for month '+str(mnth).zfill(2)+' years '+str(year_start)+'-'+str(year_end)
+      filename = metric+'_'+diff+run+'_month'+str(mnth).zfill(2)+'_year'+str(year_start)+'-'+str(year_end)+'.png'
     elif yearly:
-      title = 'Average wave height '+diff+run+' years '+str(year_start)+'-'+str(year_end)
-      filename = 'average_'+diff+run+'_year'+str(year_start)+'-'+str(year_end)+'.png'
+      title = metric+' wave height '+diff+run+' years '+str(year_start)+'-'+str(year_end)
+      filename = metric+'_'+diff+run+'_year'+str(year_start)+'-'+str(year_end)+'.png'
     plot_field(lon,lat,var,cmap,title,cbar_label,filename,avg_range_min,avg_range_max,symmetric_range)  
 
 
