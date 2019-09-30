@@ -13,7 +13,7 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
                    'pio/1.7.2']
     module_purge = True
     module_use = ['/usr/projects/climate/SHARED_CLIMATE/modulefiles/all/']
-    queues = {'standard'   :{'np_min':2520,'np_max':53640,'t_lim':16.0},
+    queues = {'standard'   :{'np_min':1   ,'np_max':53640,'t_lim':16.0},
               'interactive':{'np_min':1   ,'np_max':2520 ,'t_lim':4.0 }}
   elif machine == "badger":
     cores_per_node = 36
