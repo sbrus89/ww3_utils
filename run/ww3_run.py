@@ -56,7 +56,7 @@ def get_date_ranges(date_start,date_end,days_per_run):
 
   run_range = date_run_end - date_run_start
   if sum(restart_interval) != run_range.days:
-    print "Error in date ranges"
+    print("Error in date ranges")
 
   return date_range,restart_interval
 
@@ -71,14 +71,14 @@ def prep_grid(pwd,skip_existing=False,skip_grid=False,ignore_existing=False,requ
   if os.path.exists(pwd+'/mod_def.ww3'):
     if skip_existing:
       run_grid = 'n'
-      print 'mod_def.ww3 file exists, skipping ww3_grid'
+      print('mod_def.ww3 file exists, skipping ww3_grid')
     elif ignore_existing:
       run_grid = 'y'
     else:
       run_grid = raw_input('mod_def.ww3 file exists, run ww3_grid? ')
   else:
     if require_existing:
-      print 'mod_def.ww3 file does not exist, quitting...'
+      print('mod_def.ww3 file does not exist, quitting...')
       raise SystemExit(0)
     else:
       run_grid = 'y'
@@ -99,14 +99,14 @@ def prep_ic(pwd,skip_existing=False,skip_strt=False,ignore_existing=False,requir
   if os.path.lexists(pwd+'/restart.ww3'):
     if skip_existing:
       run_strt = 'n'
-      print 'restart.ww3 file exists, skipping ww3_strt'
+      print('restart.ww3 file exists, skipping ww3_strt')
     elif ignore_existing:
       run_strt = 'y'
     else:
       run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
   else:
     if require_existing:
-      print 'restart.ww3 file does not exist, quitting...'
+      print('restart.ww3 file does not exist, quitting...')
       raise SystemExit(0)
     else:
       run_strt = 'y'
@@ -160,14 +160,14 @@ def prep_forcing(pwd,cfg,skip_existing=False,skip_prnc=False,ignore_existing=Fal
       if os.path.exists(pwd+'/'+ww3_files[forcing]):
         if skip_existing:
           run_prnc = 'n'
-          print forcing+'.ww3 file exisits, skipping ww3_prnc'
+          print(forcing+'.ww3 file exisits, skipping ww3_prnc')
         elif ignore_existing:
           run_prnc = 'y'
         else:
           run_prnc = raw_input(forcing+'.ww3 file exists, run ww3_prnc? ')
       else:
         if require_existing:
-          print forcing+'.ww3 file does not exist, quitting...'
+          print(forcing+'.ww3 file does not exist, quitting...')
           raise SystemExit(0)
         else:
           run_prnc = 'y'
@@ -200,14 +200,14 @@ def prep_shel(pwd,skip_existing=False,ignore_existing=False,require_existing=Fal
   if os.path.exists(pwd+'/ww3_shel.inp'):
     if skip_existing:
       gen_shel = 'n'
-      print 'ww3_shel.inp file exists, skipping ww3_shel.py'
+      print('ww3_shel.inp file exists, skipping ww3_shel.py')
     elif ignore_existing:
       gen_shel = 'y'
     else:
       gen_shel = raw_input('ww3_shel.inp file exists, run ww3_shel.py?')
   else:
     if require_existing:
-      print 'ww3_shel.inp does not exist, quitting...'
+      print('ww3_shel.inp does not exist, quitting...')
       raise SystemExit(0)
     else:
       gen_shel = 'y'
@@ -351,9 +351,9 @@ if __name__ == '__main__':
   
         sub_count = sub_count + 1
 
-        print ' '.join(run_cmd)
+        print(' '.join(run_cmd))
         output = subprocess.Popen(run_cmd, stdout=subprocess.PIPE).communicate()[0]
-        print output
+        print(output)
   
         job_id = output.split()[-1]
         
