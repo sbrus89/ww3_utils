@@ -8,7 +8,7 @@ def write_ww3_ounf_inp():
   pwd = os.getcwd()
 
   f = open(pwd+'/ww3_ounf.config')
-  cfg = yaml.load(f)
+  cfg = yaml.load(f,yaml.Loader)
   pprint.pprint(cfg)
   
   f = open(pwd+'/ww3_ounf.inp','w')
