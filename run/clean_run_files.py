@@ -67,5 +67,5 @@ for task in tasks:
       command.append(dest_direc)
 
     # Run command
-    print command
+    print(command)
     subprocess.call(command)
