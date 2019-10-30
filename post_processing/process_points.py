@@ -42,12 +42,12 @@ def replace_ww3_ounp_inp_line(comment,opt1,opt2=None):
 if __name__ == '__main__':
 
   f = open(pwd+'/process_points.config')
-  cfg = yaml.load(f)
+  cfg = yaml.load(f,yaml.Loader)
   pprint.pprint(cfg)
 
   # Check if the ww3_ounp input file exists
   if not os.path.isfile(pwd+'/ww3_ounp.inp'):
-    print 'ww3_ounp.inp not found'
+    print('ww3_ounp.inp not found')
     raise SystemExit(0)
   
   # Link the mod_def.ww3 file to the current directory
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     start_date_time = date_range.split('-')[0]
     start_date = start_date_time.split('_')[0]
     start_time = start_date_time.split('_')[1]
-    print start_date,start_time
+    print(start_date,start_time)
   
     # Replace the time information line
     replace_ww3_ounp_inp_line('start date',start_date,start_time)
