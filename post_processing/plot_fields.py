@@ -23,7 +23,7 @@ def read_field_ww3(f,variable='hs'):
   output_time = nc_file.variables['time'][:]
 
   if len(output_time) > 1:
-    print "Should be only one timestep per nc file. Check ww3_ounf.inp"
+    print("Should be only one timestep per nc file. Check ww3_ounf.inp")
     raise SystemExit(0)
 
   date = ref_date + datetime.timedelta(days=output_time[0])
@@ -52,7 +52,7 @@ def difference_fields(file1,file2,variable='hs'):
     lon = lon2
     lat = lat2
   if output_date != output_date2:
-    print 'dates do not match'
+    print('dates do not match')
     raise SystemExit(0)
 
   return lon,lat,var,output_date
@@ -71,7 +71,7 @@ def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=No
     arg_count = arg_count + 1
 
   if arg_count == 0 or arg_count > 1 :
-    print 'only one averaging period can be requested'
+    print('only one averaging period can be requested')
     raise SystemExit(0)
 
   if month:
@@ -108,12 +108,12 @@ def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=No
         file_datetime = datetime.datetime.strptime(file_date,'%Y%m%dT%HZ')
    
         if (file_datetime >= month_start) and (file_datetime <= month_end):
-          print filename
+          print(filename)
      
           # Read in and compute fields to plot
           if files2:
             lon,lat,var,output_date = difference_fields(f,files2[i])
-            print f,files2[i]
+            print(f,files2[i])
           else:
             lon,lat,var,output_date = read_field_ww3(f)
           var = var.filled(fill_value=0.0)
@@ -134,7 +134,7 @@ def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=No
             if count == 0:
               var_avg = np.zeros_like(var)-1e36
             var_avg = np.maximum(var_avg,np.absolute(var))
-            print np.amax(var_avg)
+            print(np.amax(var_avg))
           elif metric == 'min':
             # Initialize min array
             if count == 0:
@@ -158,7 +158,7 @@ def plot_timesnaps(files,cfg):
 
   for f in files:
     filename = f.split('/')[-1]
-    print filename
+    print(filename)
   
     # Read in and compute fields to plot
     if nruns > 1:
@@ -188,7 +188,7 @@ def determine_plot_type(run_list=[],nruns=0,range_min=None,range_max=None):
   
   # Determine plot type based on number of runs
   if nruns > 2:
-    print "Only 2 runs can be specified for difference plots"
+    print("Only 2 runs can be specified for difference plots")
     raise SystemExit(0)
   if nruns == 1:
     cmap = 'viridis'
@@ -231,7 +231,7 @@ def plot_field(lon,lat,var,cmap,title,cbar_label,filename,range_min=None,range_m
   elif symmetric_range:
     abs_max = np.nanmax(np.absolute(var))
     levels = np.linspace(-abs_max,abs_max,100)
-    print levels
+    print(levels)
   else:
     levels = 100
 
@@ -302,8 +302,8 @@ if __name__ == '__main__':
     if j == 0:
       start_year = start
       end_year = end
-      print start_year
-      print end_year
+      print(start_year)
+      print(end_year)
     else:
       if (start != start_year) or (end != end_year):
         raise SystemExit(0)
@@ -322,7 +322,7 @@ if __name__ == '__main__':
   
       
   for i in avg_periods: 
-    print i
+    print(i)
 
     if monthly:
       mnth = i

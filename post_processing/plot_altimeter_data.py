@@ -23,7 +23,7 @@ def read_field_ww3(f,variable='hs'):
   output_time = nc_file.variables['time'][:]
 
   if len(output_time) > 1:
-    print "Should be only one timestep per nc file. Check ww3_ounf.inp"
+    print("Should be only one timestep per nc file. Check ww3_ounf.inp")
     raise SystemExit(0)
 
   date = ref_date + datetime.timedelta(days=output_time[0])
@@ -104,7 +104,7 @@ def compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,mont
         if f.split('/')[-1].find(str(yr)) > 0:
           match = f
       if match:
-        print match
+        print(match)
         sig_wave_height,num_observations,lon,lat = read_altimeter_data(match)
       else:
         print('Error in finding altimeter files')
@@ -129,7 +129,7 @@ def compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,mont
           continue
 
         if (file_datetime >= month_start) and (file_datetime <= month_end):
-          print filename
+          print(filename)
           lon_vec,lat_vec,hs,output_date = read_field_ww3(f)
           swh_model = swh_model + hs
           nmodel = nmodel + 1.0
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     for direc in cfg['altimeter_direcs']:
       altimeter_files.extend(glob.glob(direc+'*.nc'))
     altimeter_files.sort()
-    print altimeter_files
+    print(altimeter_files)
 
     # Find model output files
     ww3_files = []
