@@ -39,18 +39,27 @@ def read_field_ww3(f,variable='hs'):
 ###############################################################################################
 ###############################################################################################
 
-def difference_fields(file1,file2,variable='hs'):
+def difference_fields(lon,lat,var,output_date,sign,filename,variable='hs'):
 
-  lon,lat,var,output_date = read_field_ww3(file1,variable)
-  lon2,lat2,var2,output_date2 = read_field_ww3(file2,variable)
+  lon2,lat2,var2,output_date2 = read_field_ww3(filename,variable)
   if var.shape == var2.shape:
-    var = var-var2
+    if sign == '-':
+      var = var-var2
+    else: 
+      var = var+var2
   elif (var.shape[0] == var2.shape[0]/2) and (var.shape[1] == var2.shape[1]/2):
-    var = var-var2[::2,::2]
+    if sign == '-':
+      var = var-var2[::2,::2]
+    else:
+      var = var+var2[::2,::2]
   elif (var.shape[0] == var2.shape[0]*2) and (var.shape[1] == var2.shape[1]*2):
-    var = var[::2,::2]-var2
+    if sign == '-':
+      var = var[::2,::2]-var2
+    else:
+      var = var[::2,::2]+var2
     lon = lon2
     lat = lat2
+
   if output_date != output_date2:
     print('dates do not match')
     raise SystemExit(0)
@@ -60,7 +69,7 @@ def difference_fields(file1,file2,variable='hs'):
 ###############################################################################################
 ###############################################################################################
 
-def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=None,season=None):
+def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,season=None):
 
   arg_count = 0
   if month != None:
@@ -92,6 +101,13 @@ def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=No
   elif year:
     months   = [1,2,3,4,5,6,7,8,9,10,11,12]
     year_adj = [0,0,0,0,0,0,0,0,0, 0, 0, 0]
+
+  for i,run in enumerate(solutions):
+    if i == 0:
+      nfiles = len(solutions[run]['files'])
+    if nfiles != len(solutions[run]['files']):
+      print('number of files for solutions do not match')
+      raise SystemExit(0)
  
   
   count = 0
@@ -101,23 +117,34 @@ def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=No
       month_start = datetime.datetime(year,mnth,1,0,0)
       month_end = datetime.datetime(year,mnth,calendar.monthrange(year,mnth)[1],23,59)
 
-      for i,f in enumerate(files):
-        filename = f.split('/')[-1]
-                
-        file_date = filename.split('.')[1]
-        file_datetime = datetime.datetime.strptime(file_date,'%Y%m%dT%HZ')
+      for i in range(nfiles):
+         
+        for j,run in enumerate(solutions):
+          f = solutions[run]['files'][i]
+
+          filename = f.split('/')[-1]
+                  
+          file_date = filename.split('.')[1]
+          file_datetime = datetime.datetime.strptime(file_date,'%Y%m%dT%HZ')
    
-        if (file_datetime >= month_start) and (file_datetime <= month_end):
-          print(filename)
+          in_range = False
+          if (file_datetime >= month_start) and (file_datetime <= month_end):
+            in_range = True
+            print(solutions[run]['sign'],f)
      
-          # Read in and compute fields to plot
-          if files2:
-            lon,lat,var,output_date = difference_fields(f,files2[i])
-            print(f,files2[i])
-          else:
-            lon,lat,var,output_date = read_field_ww3(f)
-          var = var.filled(fill_value=0.0)
- 
+            # Read in and compute fields to plot
+            if j == 0:
+              lon,lat,var,output_date = read_field_ww3(f)
+              if solutions[run]['sign'] == '-':
+                var = var*-1.0
+            else:
+              lon,lat,var,output_date = difference_fields(lon,lat,var,output_date,solutions[run]['sign'],f)
+
+            # Deal with masked array
+            var = var.filled(fill_value=0.0)
+
+        if in_range:
+        
           if metric == 'average':
             # Initialize average array
             if count == 0:
@@ -142,6 +169,7 @@ def compute_metric(metric,year_start,year_end,files,files2=[],month=None,year=No
             var_avg = np.minimum(var_avg,var)
 
           count = count + 1
+          print("")
     
   if metric == 'average':
     # Compute average
@@ -250,8 +278,8 @@ if __name__ == '__main__':
 
   pwd = os.getcwd()
  
-  monthly = True 
-  yearly = False 
+  monthly = False 
+  yearly = True 
   overall = False 
  
   # Read in configuration file
@@ -280,25 +308,19 @@ if __name__ == '__main__':
 
   nruns,cmap,diff,run,symmetric_range = determine_plot_type(nruns=nruns,range_min=avg_range_min,range_max=avg_range_max)
 
-  files = []
-  files2 = []
+  solutions = {}
   for j,item in enumerate(cfg['model_runs']):   
     
     # Get field output files
-    files.append([])
-    for output_direc in item[0][1:]:
-      files[j].extend(glob.glob(output_direc+'*.nc'))
-    files[j].sort()
-  
-    files2.append([])
-    if nruns > 1:
-      for output_direc in item[1][1:]:
-        files2[j].extend(glob.glob(output_direc+'*.nc'))
-      files2[j].sort()
+    run_name = item[0] 
+    solutions[run_name] = {'sign':item[1],'files':[]}
+    for output_direc in item[2:]:
+      solutions[run_name]['files'].extend(glob.glob(output_direc+'*.nc'))
+    solutions[run_name]['files'].sort()
   
     # Get start and end years from filenames
-    start = int(files[j][0].split('/')[-1].split('.')[1][0:4])
-    end = int(files[j][-1].split('/')[-1].split('.')[1][0:4])-1
+    start = int(solutions[run_name]['files'][0].split('/')[-1].split('.')[1][0:4])
+    end = int(solutions[run_name]['files'][-1].split('/')[-1].split('.')[1][0:4])-1
     if j == 0:
       start_year = start
       end_year = end
@@ -307,6 +329,8 @@ if __name__ == '__main__':
     else:
       if (start != start_year) or (end != end_year):
         raise SystemExit(0)
+
+  pprint.pprint(solutions)
 
   # Set averaging period range
   if monthly:
@@ -338,12 +362,7 @@ if __name__ == '__main__':
       year_end = i
 
     for j in range(nitems):
-      lon,lat,var_avg = compute_metric(metric,year_start,year_end,files[j],files2[j],month=mnth,year=yearly)
-
-      if j == 0:
-        var = np.copy(var_avg)
-      else:
-        var = var - var_avg
+      lon,lat,var = compute_metric(metric,year_start,year_end,solutions,month=mnth,year=yearly)
 
     # Plot average
     cbar_label = 'wave height '+diff+' (m)'
