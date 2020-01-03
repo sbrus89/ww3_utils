@@ -1,4 +1,7 @@
 import glob
+import yaml
+import os
+import pprint
 import time
 import socket
 import sys
@@ -31,7 +34,19 @@ if host[0:2] == 'gr' or host[0:2] == 'ba':
 else:
   interactive = True
 
-run_direcs = ['./test_model_data/']
+
+pwd = os.getcwd()
+config_file = pwd+'/cluster_spectrum.config'
+if os.path.exists(config_file):
+    # Read in config file
+    f = open(config_file)
+    cfg = yaml.load(f)
+    pprint.pprint(cfg)
+    run_direcs = cfg['run_direcs']
+    month = cfg['month']
+else:
+  run_direcs = ['./test_model_data/']
+  month = 7
 
 #interactive = False
 #k_vals = [16,25,36] 
@@ -44,7 +59,6 @@ lat_min = -65.0
 lat_max = 65.0
 #lat_min = -90.0
 #lat_max = 90.0
-month = 7
 
 ##########################################################################
 ##########################################################################
@@ -52,15 +66,15 @@ month = 7
 def get_averaged_model_spectra(run_direcs,month,normalize):
 
   # Read in and average model results
-  print 'Averaging station spectra'
+  print('Averaging station spectra')
   run_files = []
   for direc in run_direcs:
-    run_files.extend(sorted(glob.glob(direc+'spec.????'+str(month).zfill(2)+'*T00Z_spec.nc')))
+    run_files.extend(sorted(glob.glob(direc+'spec.????'+str(month).zfill(2)+'*T??Z_spec.nc')))
   if len(run_files) > 0:
     run_data,run_stations = directional_spectrum.read_model_data(run_files,'average')
 
   # Find only grid stations only (no NDBC bouys)
-  print 'Eliminating NDBC and ice covered stations'
+  print('Eliminating NDBC and ice covered stations')
   m = 0
   for sta in run_stations['name']:
     if sta.find(',') < 0:
@@ -73,7 +87,7 @@ def get_averaged_model_spectra(run_direcs,month,normalize):
   # Get spectral data for grid stations
   one,total_stations,nfrequency,ndirection = run_data['spectrum'].shape
   spectrum = np.reshape(run_data['spectrum'][0,m:,:,:],(nstations,nfrequency*ndirection))
-  print spectrum.shape
+  print(spectrum.shape)
   
   # Get rid of stations covered with ice
   nonice_stations = []
@@ -85,7 +99,7 @@ def get_averaged_model_spectra(run_direcs,month,normalize):
     else:
       ice_stations.append(sta)
   spectrum = np.delete(spectrum,ice_stations,0)
-  print spectrum.shape
+  print(spectrum.shape)
 
   run_stations['name'] = [run_stations['name'][i] for i in nonice_stations]
   run_stations['lon'] = run_stations['lon'][nonice_stations]
@@ -108,7 +122,7 @@ def get_averaged_model_spectra(run_direcs,month,normalize):
     else: 
       in_stations.append(sta)
   spectrum = np.delete(spectrum,out_stations,0)
-  print spectrum.shape
+  print(spectrum.shape)
 
   run_stations['name'] = [run_stations['name'][i] for i in in_stations]
   run_stations['lon'] = run_stations['lon'][in_stations]
@@ -118,7 +132,7 @@ def get_averaged_model_spectra(run_direcs,month,normalize):
 
   # Normalize the spectra
   if normalize:
-    print 'Normalizing spectra'
+    print('Normalizing spectra')
     for sta in range(nstations):
       row_max = np.amax(spectrum[sta,:])
       row_min = np.amin(spectrum[sta,:])
@@ -186,8 +200,8 @@ def compute_connectivity(stations):
 def calculate_cluster_averages(k,labels,model_spectra):
 
   cluster_averages = np.zeros((k,model_spectra.shape[1]))
-  print cluster_averages.shape
-  print model_spectra.shape
+  print(cluster_averages.shape)
+  print(model_spectra.shape)
   for i in range(k):
     idx, = np.where(labels==i)
     cluster_averages[i,:] = np.mean(model_spectra[idx,:],axis=0)
@@ -219,7 +233,7 @@ def calculate_SMAPE(x,y):
 
 def cluster_spectra(k,method,spectrum,run_stations):
 
-  print 'Performing '+method+' clustering'
+  print('Performing '+method+' clustering')
   t0 = time.time()
   if method == 'kmeans':
     clustered = KMeans(n_clusters=k,random_state=0).fit(spectrum)
@@ -233,11 +247,11 @@ def cluster_spectra(k,method,spectrum,run_stations):
     labels = clustered.labels_
     k = np.amax(labels)+1
     idx, = np.where(labels==-1)
-    print np.amax(labels)
-    print idx.shape
+    print(np.amax(labels))
+    print(idx.shape)
     spec = np.zeros((k,spectrum.shape[1]))
-    print spec.shape
-    print spectrum.shape
+    print(spec.shape)
+    print(spectrum.shape)
     for i in range(k):
       idx, = np.where(labels==i)
       spec[i,:] = np.mean(spectrum[idx,:],axis=0)
@@ -257,7 +271,7 @@ def cluster_spectra(k,method,spectrum,run_stations):
     labels = clustered.labels_
     spec = calculate_cluster_averages(k,labels,spectrum) 
   t1 = time.time()
-  print "elapsed time = ",t1-t0
+  print("elapsed time = ",t1-t0)
     
   return labels,spec,k
 
@@ -285,8 +299,8 @@ def get_colormap(k):
 ##########################################################################
 
 def plot_cluster_grid(k,method,clustered_spectra,theta,freq,cmap):
-  print 'Plotting grid of cluster centers'
-  print clustered_spectra.shape
+  print('Plotting grid of cluster centers')
+  print(clustered_spectra.shape)
   
   ndir = 37
   nfreq = 48
@@ -325,7 +339,7 @@ def plot_cluster_grid(k,method,clustered_spectra,theta,freq,cmap):
 
 def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,station_lon,station_lat):
 
-  print 'Plotting '+metric+' error between station spectra and cluster centers'
+  print('Plotting '+metric+' error between station spectra and cluster centers')
   nstations = model_spectra.shape[0]
   cluster_error = np.zeros(nstations)
   for sta in range(nstations):
@@ -390,12 +404,12 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
   if method == 'pca':
     return
 
-  print 'Plotting clustered station labels'
+  print('Plotting clustered station labels')
 
   # Show actual and clustered spectra for selected point
   def onpick(event):
     ind = event.ind[0]
-    print event.ind
+    print(event.ind)
   
     i = labels[ind]
     ndir = 37
