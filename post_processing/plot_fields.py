@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 import netCDF4 
@@ -201,7 +202,6 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
             reanalysis_data = ma.masked_outside(reanalysis_data,0.18,0.80) 
 
             var = ma.array(var,mask=reanalysis_data.mask)
-            var = var.filled(fill_value=0.0)
         
 
           if metric == 'average':
@@ -217,6 +217,7 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
             else:
               ones = ones_array
             # Accumulate for average 
+            var = var.filled(fill_value=0.0)
             count_array = count_array + ones 
             var_avg = var_avg + var
 
@@ -234,22 +235,25 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
           elif metric == 'max':
             # Initialize max array
             if count == 0:
-              var_avg = np.zeros_like(var)-1e36
+              var_avg = np.zeros(var.shape)-1e36
             # Deal with masked array
             var = var.filled(fill_value=-1e36)
+            print(np.amax(var),np.amax(var_avg))
             var_avg = np.maximum(var_avg,var)
+
           elif metric == 'absmax':
             # Initialize max array
             if count == 0:
-              var_avg = np.zeros_like(var)-1e36
+              var_avg = np.zeros(var.shape)-1e36
             # Deal with masked array
             var = var.filled(fill_value=-1e36)
             var_avg = np.maximum(var_avg,np.absolute(var))
             print(np.amax(var_avg))
+
           elif metric == 'min':
             # Initialize min array
             if count == 0:
-              var_avg = np.zeros_like(var)+1e36
+              var_avg = np.zeros(var.shape)+1e36
             # Deal with masked array
             var = var.filled(fill_value=1e36)
             var_avg = np.minimum(var_avg,var)
@@ -310,7 +314,7 @@ def determine_plot_type(metric='average',run_list=[],nruns=0,range_min=None,rang
     cmap = 'viridis'
     diff = ''
     symmetric_range = False
-    run = run_list[0][0]
+    run = ''
   elif nruns == 2 and not range_min and not range_max and metric == 'average': 
     cmap = 'bwr'
     diff = 'difference'
@@ -445,7 +449,8 @@ if __name__ == '__main__':
     run_name = item[0] 
     solutions.append({'name':run_name,'sign':item[1],'files':[]})
     for output_direc in item[2:]:
-      solutions[j]['files'].extend(glob.glob(output_direc+'*.nc'))
+      files = glob.glob(output_direc+'*.nc')
+      solutions[j]['files'].extend(files)
     solutions[j]['files'].sort()
   
     # Get start and end years from filenames
@@ -458,9 +463,14 @@ if __name__ == '__main__':
       print(end_year)
     else:
       if (start != start_year) or (end != end_year):
-        raise SystemExit(0)
+       raise SystemExit(0)
 
   pprint.pprint(solutions)
+
+  #ds = []
+  #for j,item in enumerate(solutions):
+  #  ds.append(xr.open_mfdataset(item['files'],combine='nested',parallel=True,concat_dim='time',chunks={'latitude':10,'longitude':10,'time':10}))
+  #  print(ds[j])
 
   # Set averaging period range
   if monthly:
