@@ -14,10 +14,12 @@ import cartopy
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy import interpolate
+
 plt.switch_backend('agg')
-#np.set_printoptions(threshold=np.nan)
+np.seterr(divide='ignore', invalid='ignore')
 cartopy.config['pre_existing_data_dir'] = \
         os.getenv('CARTOPY_DIR', cartopy.config.get('pre_existing_data_dir'))
+
 #--------------------------
 # Define variables to plot
 #--------------------------
