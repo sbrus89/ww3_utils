@@ -111,6 +111,7 @@ def read_point_files(data_files,variables):
 def interpolate_stations_from_fields(data_files,variables,station_file):
 
   stations = read_station_file(station_file)
+  nstations = len(stations['name'])
   sta_pts = np.column_stack((stations['lon'],stations['lat']))
 
   t = 0.0
@@ -138,6 +139,11 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
           else:
             # (for E3SM WW3 output)
             data['ref_date'] = datetime.datetime.strptime(cfg['ref_date'], '%Y-%m-%d %H:%M:%S')
+
+          # Determine if unstructured
+          unstructured = False
+          if 'node' in nc_file.dimensions:
+            unstructured = True
         
       # Get field grid points
       if 'longitude' in nc_file.variables:
@@ -149,7 +155,13 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
         lat  = np.linspace(cfg['lat_range'][0],cfg['lat_range'][1],nc_file.dimensions['NY'].size)
       idx = np.where(lon > 180.0)
       lon[idx] = lon[idx] - 360.0
-      Lon,Lat = np.meshgrid(lon,lat)
+
+      if unstructured == False:
+        Lon,Lat = np.meshgrid(lon,lat)
+      else:
+        Lon = lon
+        Lat = lat
+        
 
       # Get time
       if j == 0:
@@ -205,9 +217,12 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
 ################################################################################################
 
 def read_field(nc_file,var):
-  
+
   if 'time' in nc_file.variables:
-    field = nc_file.variables[var][0,:,:]
+    if 'node' in nc_file.variables[var].dimensions:
+      field = nc_file.variables[var][0,:]
+    else:
+      field = nc_file.variables[var][0,:,:]
   else:
     field = nc_file.variables[var][:,:]
 
