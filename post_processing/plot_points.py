@@ -316,8 +316,14 @@ def output_time_to_date(output_time,ref_date):
   output_date = []
   output_datetime = []
 
+  date_min = '1000 01 01 00 00'
+  frmt = '%Y %m %d %H %M'
+  adjust_start = False
+  if ref_date + datetime.timedelta(days=output_time[0]) < datetime.datetime.strptime(date_min,frmt):
+    adjust_start = True
+
   # Handle reference time
-  if 'start_date' in cfg:                                                              # start_time is used to create a common starting
+  if 'start_date' in cfg and adjust_start:                                             # start_time is used to create a common starting
     start_date = datetime.datetime.strptime(cfg['start_date'],'%Y-%m-%d %H:%M:%S')     # point across runs that start from different initial
     offset = -datetime.timedelta(days=output_time[0])                                  # dates i.e. E3SM 0001-01-01, WW3 2005-06-01
   else:
