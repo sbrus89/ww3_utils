@@ -27,37 +27,42 @@ variables = {
             'hs'  :{'obs_col' : 8,
                      'fill_val': 99.00,
                      'recip'   : False,
-                     'label'   : 'Significant wave height',
+                     'title'   : 'Significant wave height',
+                     'label'   : 'wave height',
                      'units'   : 'm',
                      'aka'     : ['HS']},
              'th1p':{'obs_col' : 11, 
                      'fill_val': 999,
                      'recip'   : False,
-                     'label'   : 'Dominant wave direction',
+                     'title'   : 'Dominant wave direction',
+                     'label'   : 'wave direction',
                      'units'   : 'deg',
                      'aka'     : ['dp']},
              'fp'  :{'obs_col' : 9,
                      'fill_val': 99.0,
                      'recip'   : True,
-                     'label'   : 'Dominant wave period',
+                     'title'   : 'Dominant wave period',
+                     'label'   : 'wave period',
                      'units'   : 's',
                      'aka'     : ['FP']},
              'wnd' :{'obs_col' : 6,
                      'fill_val': 99.0,
                      'recip'   : False,
-                     'label'   : 'Wind speed',
+                     'title'   : 'Wind speed',
+                     'label'   : 'wind speed',
                      'units'   : 'm/s',
                      'aka'     : ['uwnd','vwnd']},
              'wnddir':{'obs_col' : 5,
                        'fill_val': 999,
                        'recip'   : False,
-                       'label'   : 'Wind direction',
+                       'title'   : 'Wind direction',
+                       'label'   : 'wind direction',
                        'units'   : 'deg',
                        'aka'     : ['uwnd','vwnd']},
              #'ssh  ':{'obs_col' : 5,
              #          'fill_val': 99.0,
              #          'recip'   : False,
-             #          'label'   : 'Water Level',
+             #          'title'   : 'Water Level',
              #          'units'   : 'm',
              #          'aka'     : ['SSH']}
               }
@@ -484,12 +489,12 @@ if __name__ == '__main__':
             lines.append(l2)
             labels.append(run)
             data_plotted = True
-        ax.set_title(variables[var]['label'])
+        ax.set_title(variables[var]['title'])
         if data_plotted:
           ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))
         ax.set_xlabel('time')
-        ax.set_ylabel(var)
+        ax.set_ylabel(variables[var]['label']+' ('+variables[var]['units']+')')
         #print ax.get_xlim()
         if variables[var]['units'] == 'deg':
           ax.set_ylim([0.0,360.0])          
