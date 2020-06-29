@@ -1,18 +1,20 @@
 import xml.etree.ElementTree as ET
 import os
-import urllib2
+import urllib3
 import datetime
 import pprint
+import certifi
 
 pwd = os.getcwd()
 
 # Input parameters
-year = '2000'
+year = '2012'
 run_start_date = '01-01'
 run_end_date   = '12-31'
 movement_tolerance = 0.1
 lonlat_box = [-180.0,180.0,-90.0,90.0]
 data_product = 'standard meterological'
+#data_product = 'spectral wave'
 
 data_product_ID = {'standard meterological':[['stdmet','h']],
                    'spectral wave':[['swden','w'],['swdir','d'],['swdir2','i'],['swr1','j'],['swr2','k']]}
@@ -26,6 +28,8 @@ run_end   = datetime.datetime.strptime(year+'-'+run_end_date,datetime_frmt)
 fdir = os.path.dirname(os.path.realpath(__file__))
 tree = ET.parse(fdir+'/stationmetadata.xml')
 root = tree.getroot()
+
+http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
 
 stations = {}
 nsta = 0
@@ -67,9 +71,9 @@ for i,sta in enumerate(root):
           stations[ID]['history'] = []
           stations[ID]['moved'] = False
           nsta = nsta + 1
-          print nsta,ID,prgm
+          print(nsta,ID,prgm)
         stations[ID]['history'].append({'start':sta_start_date,'end':sta_end_date,'lon':lon,'lat':lat})
-        print '  ', hist.attrib['start']
+        print('  ', hist.attrib['start'])
 
     # Check if station location has moved throughout deployment
     if (ID in stations) and (len(stations[ID]['history']) > 1):
@@ -97,18 +101,18 @@ for i,sta in enumerate(root):
 
 
 #Ignore proxies (for use outside lab)
-#urllib2.getproxies = lambda: {}
+#urllib3.getproxies = lambda: {}
 
 
 # Download station data and write to station list file
 f = open(pwd+'/stations.txt','w')
-for sta in stations:
-      
-      print "Station "+sta
+for i,sta in enumerate(stations):
+
+      print("Station "+sta)
  
       # Skip if station has moved
       if stations[sta]['moved'] == True:
-        print " station has moved"
+        print(" station has moved")
         continue
 
       # Get station information
@@ -123,21 +127,23 @@ for sta in stations:
       station_found = True
       for prod in data_product_ID[data_product]:
         try:
-          print '  checking '+ID+' '+prod[0]
+          print('  checking '+ID+' '+prod[0])
           url = 'https://www.ndbc.noaa.gov/station_history.php?station='+ID
-          data = urllib2.urlopen(url).read()
+          data = http.request('GET',url).data.decode()
           if data.find(ID+prod[1]+year) < 0:
             all_data_exists = False
             break
+          else:
+            print('found in webstie')
         except:
           station_found = False
 
       if not station_found:
-        print '  station not found'
+        print('  station not found')
         continue 
 
       if not all_data_exists:
-        print "  not all data products exist for this year"
+        print("  not all data products exist for this year")
         continue
  
       # Download data
@@ -145,17 +151,17 @@ for sta in stations:
       added_to_list = False
       for prod in data_product_ID[data_product]:
         try:
-          print '  downloading '+ID+ ' '+prod[0]
+          print('  downloading '+ID+ ' '+prod[0])
 
           url = 'https://www.ndbc.noaa.gov/view_text_file.php?filename='+ID+prod[1]+year+'.txt.gz&dir=data/historical/'+prod[0]+'/'
-          data = urllib2.urlopen(url).read().splitlines()
+          data = http.request('GET',url).data.decode().splitlines()
           success = True
         except:
-          print '  error downloading data'
+          print('  error downloading data')
 
         # Write to file
         if success:
-          print data[0]
+          print(data[0])
           if data[0].find('YYYY MM DD hh mm') >= 0 or data[0].find('#YY  MM DD hh mm') >= 0 or data[0].find('YYYY MM DD hh') >= 0 or data[0].find('YY MM DD hh') >= 0:
 
             # Save station data file
@@ -168,5 +174,5 @@ for sta in stations:
               f.write('  '.join([lon,lat,sta,owner,prgm])+'\n')
               added_to_list = True
           else: 
-            print '  data not availiable'
+            print('  data not availiable')
     
