@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from mpl_toolkits.basemap import Basemap
+import cartopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 from scipy import interpolate
 import pprint
 import glob
@@ -38,10 +40,10 @@ def read_station_data(sta,year,variables):
     filename = data_direc+sta+'_'+year+'_'+var+'.txt' 
     if not os.path.exists(filename):
       success = False
-      print 'file not found: '+filename
+      print('file not found: '+filename)
       break 
 
-    print '  reading '+var
+    print('  reading '+var)
     f = open(filename,'r')
     obs = f.read().splitlines()
   
@@ -66,7 +68,7 @@ def read_station_data(sta,year,variables):
     try:
       obs_data[var]['data'] = np.asarray(obs_data[var]['data'],dtype=np.float)            
     except:
-      print '  data shape not correct'
+      print('  data shape not correct')
       success = False
     obs_data[var]['freq'] = np.asarray(obs_data[var]['freq'],dtype=np.float)
     
@@ -79,7 +81,7 @@ def read_station_data(sta,year,variables):
 def read_model_data(files,mode=None,stations=[]):
   
   for i,name in enumerate(files):
-    print name.split('/')[-1]
+    print(name.split('/')[-1])
 
     nc_file = netCDF4.Dataset(name,'r')
 
@@ -216,7 +218,7 @@ def interpolate_station_data(obs_data,variables):
 
   # Interploate variables
   for var in variables:    
-      print '  interpolating '+ var
+      print('  interpolating '+ var)
 
       # Handle degree interpolation
       if var.find('dir') > 0:
@@ -252,7 +254,7 @@ def match_dates(obs_data,variables):
   dates = list(dates)
   
   for var in variables:
-    print '  matching dates '+var
+    print('  matching dates '+var)
 
     # Find indices of dates in intersection set
     indices = [i for i, x in enumerate(obs_data[var]['datetime']) if x in dates]
@@ -274,7 +276,7 @@ def match_dates(obs_data,variables):
 
 def compute_spectrum(obs_data,variables,mode='average'):
 
-  print '  computing spectrum'
+  print('  computing spectrum')
 
   # Setup spectrum dimensions
   nsnaps = len(obs_data['swden']['datetime'])
@@ -339,6 +341,9 @@ def interp_model_spectrum(theta_model,freq_model,spectrum_model,ndir=0,nfreq=0,f
     freq_interp = np.linspace(0.0,freq_max,nfreq)
     Freq,Theta = np.meshgrid(freq_interp,theta_interp)
     return_interp_grid = True
+  else:
+    theta_interp = Theta[:,0]
+    freq_interp = Freq[0,:]
   
   # Interploate spectrum onto data mesh with evenly spaced freq axis
   interp = interpolate.RegularGridInterpolator((theta_model,freq_model), spectrum_model, bounds_error=False, fill_value=np.nan)
@@ -370,7 +375,7 @@ def interp_model_spectrum(theta_model,freq_model,spectrum_model,ndir=0,nfreq=0,f
 
 def plot_station_spectrum(sta,lon,lat,lon2,lat2,freq1,theta1,spectrum1,labels1,freq2=[],theta2=[],spectrum2=None,labels2=None):
 
-  print '  plotting spectrum'
+  print('  plotting spectrum')
 
   nsnaps = len(labels1)
 
@@ -388,22 +393,22 @@ def plot_station_spectrum(sta,lon,lat,lon2,lat2,freq1,theta1,spectrum1,labels1,f
       gs = gridspec.GridSpec(nrows=2,ncols=2,figure=fig)
 
       # Plot global station location
-      ax = fig.add_subplot(gs[0,0])
-      m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
-                                   llcrnrlon=-180,urcrnrlon=180,resolution='c')
-      m.fillcontinents(color='tan',lake_color='lightblue')
-      m.drawcoastlines()
-      ax.plot(lon,lat,'ro')
-      ax.plot(lon2,lat2,'bo')
+      ax1 = fig.add_subplot(gs[0,0],projection=ccrs.PlateCarree())
+      ax1.set_extent([-180.0,180.0,-90.0,90.0],crs=ccrs.PlateCarree())
+      ax1.add_feature(cfeature.LAND)
+      ax1.add_feature(cfeature.LAKES)
+      ax1.add_feature(cfeature.COASTLINE)
+      ax1.plot(lon,lat,'ro',transform=ccrs.PlateCarree())
+      ax1.plot(lon2,lat2,'bo',transform=ccrs.PlateCarree())
 
       # Plot local station location
-      ax = fig.add_subplot(gs[0,1])
-      m = Basemap(projection='cyl',llcrnrlat=lat-7.0 ,urcrnrlat=lat+7.0,\
-                                   llcrnrlon=lon-10.0,urcrnrlon=lon+10.0,resolution='l')
-      m.fillcontinents(color='tan',lake_color='lightblue')
-      m.drawcoastlines()
-      ax.plot(lon,lat,'ro')
-      ax.plot(lon2,lat2,'bo')
+      ax2 = fig.add_subplot(gs[0,1],projection=ccrs.PlateCarree())
+      ax2.set_extent([lon-10.0, lon+10.00, lat-7.0 , lat+7.0], crs=ccrs.PlateCarree())
+      ax2.add_feature(cfeature.LAND)
+      ax2.add_feature(cfeature.LAKES)
+      ax2.add_feature(cfeature.COASTLINE)
+      ax2.plot(lon,lat,'ro',transform=ccrs.PlateCarree())
+      ax2.plot(lon2,lat2,'bo',transform=ccrs.PlateCarree())
 
       # Plot spectrum
       if spectrum2 is None:
@@ -439,7 +444,7 @@ def plot_station_spectrum(sta,lon,lat,lon2,lat2,freq1,theta1,spectrum1,labels1,f
         #first_col =  spec2[0,:]
         #spec2 = np.vstack((spec2,first_col[np.newaxis,:]))
 
-        spec2 = interp_model_spectrum(theta2,freq2,spectrum2[i,:,:],Theta1,R1)
+        spec2 = interp_model_spectrum(theta2,freq2,spectrum2[i,:,:],Theta=Theta1,Freq=R1)
 
         # Plot spectrum
         ax = fig.add_subplot(gs[1,1],polar=True)
@@ -503,7 +508,7 @@ if __name__ == '__main__':
     except:
       continue
 
-    print sta
+    print(sta)
     lon = stations['lon'][i]
     lat = stations['lat'][i]
     lon2 = run_stations['lon'][j]
