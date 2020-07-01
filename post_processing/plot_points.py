@@ -10,10 +10,16 @@ import os
 import yaml
 import pprint
 import subprocess
-from mpl_toolkits.basemap import Basemap
+import cartopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 from scipy import interpolate
+
 plt.switch_backend('agg')
-np.set_printoptions(threshold=np.nan)
+np.seterr(divide='ignore', invalid='ignore')
+cartopy.config['pre_existing_data_dir'] = \
+        os.getenv('CARTOPY_DIR', cartopy.config.get('pre_existing_data_dir'))
+
 #--------------------------
 # Define variables to plot
 #--------------------------
@@ -21,37 +27,42 @@ variables = {
             'hs'  :{'obs_col' : 8,
                      'fill_val': 99.00,
                      'recip'   : False,
-                     'label'   : 'Significant wave height',
+                     'title'   : 'Significant wave height',
+                     'label'   : 'wave height',
                      'units'   : 'm',
                      'aka'     : ['HS']},
              'th1p':{'obs_col' : 11, 
                      'fill_val': 999,
                      'recip'   : False,
-                     'label'   : 'Dominant wave direction',
+                     'title'   : 'Dominant wave direction',
+                     'label'   : 'wave direction',
                      'units'   : 'deg',
                      'aka'     : ['dp']},
              'fp'  :{'obs_col' : 9,
                      'fill_val': 99.0,
                      'recip'   : True,
-                     'label'   : 'Dominant wave period',
+                     'title'   : 'Dominant wave period',
+                     'label'   : 'wave period',
                      'units'   : 's',
                      'aka'     : ['FP']},
              'wnd' :{'obs_col' : 6,
                      'fill_val': 99.0,
                      'recip'   : False,
-                     'label'   : 'Wind speed',
+                     'title'   : 'Wind speed',
+                     'label'   : 'wind speed',
                      'units'   : 'm/s',
                      'aka'     : ['uwnd','vwnd']},
              'wnddir':{'obs_col' : 5,
                        'fill_val': 999,
                        'recip'   : False,
-                       'label'   : 'Wind direction',
+                       'title'   : 'Wind direction',
+                       'label'   : 'wind direction',
                        'units'   : 'deg',
                        'aka'     : ['uwnd','vwnd']},
              #'ssh  ':{'obs_col' : 5,
              #          'fill_val': 99.0,
              #          'recip'   : False,
-             #          'label'   : 'Water Level',
+             #          'title'   : 'Water Level',
              #          'units'   : 'm',
              #          'aka'     : ['SSH']}
               }
@@ -63,7 +74,7 @@ def read_point_files(data_files,variables):
 
   for j,files in enumerate(data_files):
     for i,name in enumerate(files):
-      print name.split('/')[-1]
+      print(name.split('/')[-1])
     
       nc_file = netCDF4.Dataset(name,'r')
     
@@ -92,7 +103,7 @@ def read_point_files(data_files,variables):
         data['time'][i] = nc_file.variables['time'][:]
       for var in variables:
         if var in nc_file.variables:
-          print var
+          print(var)
           data[var][i][:] = nc_file.variables[var][:]
 
   data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
@@ -105,12 +116,13 @@ def read_point_files(data_files,variables):
 def interpolate_stations_from_fields(data_files,variables,station_file):
 
   stations = read_station_file(station_file)
+  nstations = len(stations['name'])
   sta_pts = np.column_stack((stations['lon'],stations['lat']))
 
   t = 0.0
   for j,files in enumerate(data_files):
     for i,name in enumerate(files):
-      print name.split('/')[-1]
+      print( name.split('/')[-1])
 
       nc_file = netCDF4.Dataset(name,'r')
 
@@ -132,6 +144,11 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
           else:
             # (for E3SM WW3 output)
             data['ref_date'] = datetime.datetime.strptime(cfg['ref_date'], '%Y-%m-%d %H:%M:%S')
+
+          # Determine if unstructured
+          unstructured = False
+          if 'node' in nc_file.dimensions:
+            unstructured = True
         
       # Get field grid points
       if 'longitude' in nc_file.variables:
@@ -143,7 +160,13 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
         lat  = np.linspace(cfg['lat_range'][0],cfg['lat_range'][1],nc_file.dimensions['NY'].size)
       idx = np.where(lon > 180.0)
       lon[idx] = lon[idx] - 360.0
-      Lon,Lat = np.meshgrid(lon,lat)
+
+      if unstructured == False:
+        Lon,Lat = np.meshgrid(lon,lat)
+      else:
+        Lon = lon
+        Lat = lat
+        
 
       # Get time
       if j == 0:
@@ -157,7 +180,7 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
       # Get variables
       for var in variables:
         if var in nc_file.variables or any(x in nc_file.variables for x in variables[var]['aka']):
-          print var      
+          print( var )     
 
           # Account for alernate variable names
           if var not in nc_file.variables:
@@ -199,9 +222,12 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
 ################################################################################################
 
 def read_field(nc_file,var):
-  
+
   if 'time' in nc_file.variables:
-    field = nc_file.variables[var][0,:,:]
+    if 'node' in nc_file.variables[var].dimensions:
+      field = nc_file.variables[var][0,:]
+    else:
+      field = nc_file.variables[var][0,:,:]
   else:
     field = nc_file.variables[var][:,:]
 
@@ -251,12 +277,16 @@ def read_station_data(obs_file,min_date,max_date,variables):
     obs_frmt = '%Y %m %d %H %M'
     col_offset = 0
     date_length = 16
+  elif  obs[0].find('YY  MM DD hh mm') >= 0:
+    obs_frmt = '%Y %m %d %H %M'
+    col_offset = 0
+    date_length = 16
   elif  obs[0].find('YYYY MM DD hh WD') >= 0:
     obs_frmt = '%Y %m %d %H'
     col_offset = -1
     date_length = 13
   else:
-    print 'problem with observed data format'
+    print( 'problem with observed data format')
     raise SystemExit(0)
    
   # Get data from observation file between min and max output times
@@ -291,8 +321,14 @@ def output_time_to_date(output_time,ref_date):
   output_date = []
   output_datetime = []
 
+  date_min = '1000 01 01 00 00'
+  frmt = '%Y %m %d %H %M'
+  adjust_start = False
+  if ref_date + datetime.timedelta(days=output_time[0]) < datetime.datetime.strptime(date_min,frmt):
+    adjust_start = True
+
   # Handle reference time
-  if 'start_date' in cfg:                                                              # start_time is used to create a common starting
+  if 'start_date' in cfg and adjust_start:                                             # start_time is used to create a common starting
     start_date = datetime.datetime.strptime(cfg['start_date'],'%Y-%m-%d %H:%M:%S')     # point across runs that start from different initial
     offset = -datetime.timedelta(days=output_time[0])                                  # dates i.e. E3SM 0001-01-01, WW3 2005-06-01
   else:
@@ -304,9 +340,9 @@ def output_time_to_date(output_time,ref_date):
     try:
       date = start_date + datetime.timedelta(days=t) + offset
     except:
-      print "likely datetime overflow error"
-      print "  try specifying start_date in the config file"
-      print "  if simulation started at something like 0001-01-01"
+      print( "likely datetime overflow error")
+      print( "  try specifying start_date in the config file")
+      print( "  if simulation started at something like 0001-01-01")
       raise SystemExit(0)
      
     output_date.append(date.strftime('%Y %m %d %H %M'))
@@ -372,7 +408,7 @@ if __name__ == '__main__':
         date_min = data[run]['date'][0]
       if data[run]['datetime'][-1] > datetime.datetime.strptime(date_max,frmt):
         date_max = data[run]['date'][-1]
-    print date_min,date_max
+    print( date_min,date_max)
   else:
     stations["stations_only"] = read_station_file(cfg["station_file"])
     station_list = []
@@ -386,7 +422,7 @@ if __name__ == '__main__':
   # Read observation data and plot for each station
   #-------------------------------------------------
   for i,sta in enumerate(station_list):
-    print sta
+    print( sta)
   
     # Check if observation file exists
     obs_file = ""
@@ -405,9 +441,9 @@ if __name__ == '__main__':
 
     # Get data from observation file at output times
     if not obs_file:      
-      print '  no observation file found'
+      print( '  no observation file found')
     else:
-      print '  '+obs_file
+      print( '  '+obs_file)
       obs_data = read_station_data(obs_file,date_min,date_max,variables)
         
       # Create figure 
@@ -423,24 +459,24 @@ if __name__ == '__main__':
           break
      
       # Plot global station location
-      ax = fig.add_subplot(gs[0,0])
-      m = Basemap(projection='cyl',llcrnrlat= -90,urcrnrlat=90,\
-                                   llcrnrlon=-180,urcrnrlon=180,resolution='c')
-      m.fillcontinents(color='tan',lake_color='lightblue')
-      m.drawcoastlines()
-      ax.plot(lon,lat,'ro')
+      ax = fig.add_subplot(gs[0,0],projection=ccrs.PlateCarree())
+      ax.set_extent([-180.0, 180.0, -90.0, 90.0],crs=ccrs.PlateCarree())
+      ax.add_feature(cfeature.LAND, zorder=100)
+      ax.add_feature(cfeature.LAKES, alpha=0.5, zorder=101)
+      ax.coastlines(zorder=101)
+      ax.plot(lon,lat,'ro',zorder=102)
       
       # Plot local station location
-      ax = fig.add_subplot(gs[0,1])
-      m = Basemap(projection='cyl',llcrnrlat=lat-7.0 ,urcrnrlat=lat+7.0,\
-                                   llcrnrlon=lon-10.0,urcrnrlon=lon+10.0,resolution='l')
-      m.fillcontinents(color='tan',lake_color='lightblue')
-      m.drawcoastlines()
-      ax.plot(lon,lat,'ro')
+      ax = fig.add_subplot(gs[0,1],projection=ccrs.PlateCarree())
+      ax.set_extent([lon-10.0, lon+10.0, lat-7.0, lat+7.0],crs=ccrs.PlateCarree())
+      ax.add_feature(cfeature.LAND, zorder=100)
+      ax.add_feature(cfeature.LAKES, alpha=0.5, zorder=101)
+      ax.coastlines(zorder=101)
+      ax.plot(lon,lat,'ro',zorder=102)
   
       # Plot modeled and observed data timeseries
       for k,var in enumerate(variables):
-        print '  '+var
+        print( '  '+var)
         lines = []
         labels = []
         data_plotted = False
@@ -459,12 +495,12 @@ if __name__ == '__main__':
             lines.append(l2)
             labels.append(run)
             data_plotted = True
-        ax.set_title(variables[var]['label'])
+        ax.set_title(variables[var]['title'])
         if data_plotted:
           ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        #ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))
         ax.set_xlabel('time')
-        ax.set_ylabel(var)
+        ax.set_ylabel(variables[var]['label']+' ('+variables[var]['units']+')')
         #print ax.get_xlim()
         if variables[var]['units'] == 'deg':
           ax.set_ylim([0.0,360.0])          
@@ -472,6 +508,7 @@ if __name__ == '__main__':
           fig.delaxes(ax)                    # And delete axis to prevent an error
       lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
       st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
+      fig.canvas.draw()
       fig.tight_layout()
       fig.savefig(sta+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
       plt.close()
