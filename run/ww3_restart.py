@@ -49,7 +49,7 @@ def find_restart_time(restart_time_expected=None):
   log_file = pwd+'/log.ww3'
 
   if not os.path.isfile(log_file):
-    print 'log.ww3 file does not exist'
+    print('log.ww3 file does not exist')
     raise SystemExit(0)
 
   f = open(log_file,'r')
@@ -95,10 +95,10 @@ def find_restart_time(restart_time_expected=None):
   # Set restart_time as the final time if no restart was written
   if restart_found == False:
     end_time = date_time_formatted 
-    print "no restart file written"
+    print("no restart file written")
   else:
     if restart_time_expected and restart_time != restart_time_expected:
-      print "restart time is different from what is expected"
+      print("restart time is different from what is expected")
       raise SystemExit(0)
 
   return restart_time,start_time,end_time
@@ -124,6 +124,7 @@ def update_shel_input(restart_time,stop_time=None,restart_interval=None):
   pwd = os.getcwd()
 
   shel_inp = pwd + '/ww3_shel.inp'
+  print("Updating: "+shel_inp)
 
   f = open(shel_inp,'r')
   lines = f.read().splitlines()
