@@ -142,17 +142,28 @@ def compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,mont
 ###############################################################################
 ###############################################################################
 
-def plot_altimeter_data(lon_vec,lat_vec,swh,filename,plot_type='field'):
+def plot_altimeter_data(lon_vec,lat_vec,swh,filename,plot_type='field',field_bounds=[],difference_bounds=[]):
 
   if plot_type == 'field':
     cmap = 'viridis'
-    levels = np.linspace(0.0,10.0,50)
+    if field_bounds:
+      levels = np.linspace(field_bounds[0],field_bounds[1],50)
+    else:
+      levels = np.linspace(0.0,10.0,50)
     label = 'Significant wave height (m)'
     ticks = []
   elif plot_type == 'difference':
     cmap = 'bwr'
-    abs_max = np.nanmax(np.absolute(swh))
-    levels = np.linspace(-abs_max,abs_max,100)
+    if difference_bounds:
+      if not abs(difference_bounds[0]) == difference_bounds[1] :
+        print('difference bounds must be equal and oppisite')
+        raise SystemExit(0)
+      else:
+        abs_max = difference_bounds[1]
+        levels = np.linspace(-abs_max,abs_max,100)
+    else:
+      abs_max = np.nanmax(np.absolute(swh))
+      levels = np.linspace(-abs_max,abs_max,100)
     ticks = [-abs_max, -0.5*abs_max, 0.0, 0.5*abs_max,abs_max]
     label = 'Percent difference in SWH'
 
@@ -209,22 +220,23 @@ def plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename):
 ###############################################################################
 ###############################################################################
 
-def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,filename_id,write_nc):
+def create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,filename_id,write_nc,field_bounds=[],difference_bounds=[]):
 
     
 
   if altimeter_files:
     filename = 'swh_obs_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
-    plot_altimeter_data(lon_vec,lat_vec,swh_obs,filename)
+    plot_altimeter_data(lon_vec,lat_vec,swh_obs,filename,field_bounds=field_bounds,difference_bounds=difference_bounds)
   if ww3_files:
     filename = 'swh_ww3_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
-    plot_altimeter_data(lon_vec,lat_vec,swh_model,filename)
+    plot_altimeter_data(lon_vec,lat_vec,swh_model,filename,field_bounds=field_bounds,difference_bounds=difference_bounds)
   if altimeter_files and ww3_files:
     filename = 'swh_diff_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
-    diff = np.divide(swh_model-swh_obs,swh_obs)*100.0
+    #diff = np.divide(swh_model-swh_obs,swh_obs)*100.0
+    diff = swh_model-swh_obs
     idx = np.where(np.absolute(diff) > 1e10)
     diff[idx] = np.nan
-    plot_altimeter_data(lon_vec,lat_vec,diff,filename,plot_type='difference')
+    plot_altimeter_data(lon_vec,lat_vec,diff,filename,plot_type='difference',field_bounds=field_bounds,difference_bounds=difference_bounds)
     filename = 'swh_comp_avg_'+str(year_start)+'-'+str(year_end)+filename_id+'.png'
     plot_comparison(lon_vec,lat_vec,swh_obs,swh_model,filename)
 
@@ -281,6 +293,14 @@ if __name__ == '__main__':
       ww3_files.extend(glob.glob(direc+'*.nc'))
     ww3_files.sort()
 
+    # Get plotting bounds
+    field_bounds = []
+    if 'field_bounds' in cfg:
+      field_bounds = cfg['field_bounds']
+    difference_bounds = []
+    if 'difference_bounds' in cfg:
+      difference_bounds = cfg['difference_bounds'] 
+
     # Get start and end years from filenames
     year_start = int(ww3_files[0].split('/')[-1].split('.')[1][0:4])
     year_end = int(ww3_files[-1].split('/')[-1].split('.')[1][0:4])-1
@@ -290,17 +310,17 @@ if __name__ == '__main__':
       for mnth in range(1,13):
    
         lon_vec,lat_vec,swh_obs,swh_model = compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,month=mnth)
-        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_month'+str(mnth).zfill(2),cfg['write_nc'])        
+        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_month'+str(mnth).zfill(2),cfg['write_nc'],field_bounds,difference_bounds)        
 
     if cfg['seasonal'] == True:
       for season in ['winter','spring','summer','fall']:
 
         lon_vec,lat_vec,swh = compute_altimeter_average(year_start,year_end,altimeter_files,ww3_files,season=season)
-        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_'+season,cfg['write_nc'])        
+        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_'+season,cfg['write_nc'],field_bounds,difference_bounds)        
 
     if cfg['yearly'] == True:
       for year in range(year_start,year_end+1):
  
         lon_vec,lat_vec,swh = compute_altimeter_average(year,year,altimeter_files,ww3_files,year=True)
-        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_year'+str(year).zfill(2),cfg['write_nc'])        
+        create_plots(lon_vec,lat_vec,swh_obs,swh_model,altimeter_files,ww3_files,'_year'+str(year).zfill(2),cfg['write_nc'],field_bounds,difference_bounds)        
    
