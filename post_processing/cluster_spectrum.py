@@ -6,6 +6,7 @@ import time
 import socket
 import sys
 import numpy as np
+import netCDF4
 from matplotlib import cm,ticker
 from matplotlib.transforms import Bbox
 from matplotlib.patches import Rectangle
@@ -40,7 +41,7 @@ config_file = pwd+'/cluster_spectrum.config'
 if os.path.exists(config_file):
     # Read in config file
     f = open(config_file)
-    cfg = yaml.load(f)
+    cfg = yaml.load(f,Loader=yaml.Loader)
     pprint.pprint(cfg)
     run_direcs = cfg['run_direcs']
     month = cfg['month']
@@ -57,6 +58,7 @@ normalize = True
 error_metrics = ['RMSE','L2','SMAPE','R2'] 
 lat_min = -65.0
 lat_max = 65.0
+log_scale = False
 #lat_min = -90.0
 #lat_max = 90.0
 
@@ -138,6 +140,54 @@ def get_averaged_model_spectra(run_direcs,month,normalize):
       row_min = np.amin(spectrum[sta,:])
       if row_max > 0.:
         spectrum[sta,:] = (spectrum[sta,:]-row_min)/(row_max-row_min)
+
+  return run_data,run_stations,spectrum
+
+##########################################################################
+##########################################################################
+
+def write_averaged_model_spectra(filename,run_data,run_stations,spectrum):
+ 
+  nc_file = netCDF4.Dataset(filename,'w')
+
+  nsta,nfreqdir = spectrum.shape
+  one,total_stations,nfrequency,ndirection = run_data['spectrum'].shape
+  nc_file.createDimension('nstations',nsta)
+  nc_file.createDimension('ndirection',ndirection)
+  nc_file.createDimension('nfrequency',nfrequency)
+  nc_file.createDimension('nfreqdir',ndirection*nfrequency)
+
+  freq_nc = nc_file.createVariable('freq','f8',('nfrequency',))
+  direc_nc = nc_file.createVariable('direc','f8',('ndirection',)) 
+  spec_nc = nc_file.createVariable('spec','f8',('nstations','nfreqdir'))
+  lat_nc = nc_file.createVariable('lat','f8',('nstations',))
+  lon_nc = nc_file.createVariable('lon','f8',('nstations',))
+  
+  freq_nc[:] = run_data['freq']
+  direc_nc[:] = run_data['theta']
+  spec_nc[:] = spectrum
+  lon_nc[:] = run_stations['lon']
+  lat_nc[:] = run_stations['lat']
+
+  nc_file.close() 
+   
+##########################################################################
+##########################################################################
+
+def read_averaged_model_spectra(filename):
+ 
+  nc_file = netCDF4.Dataset(filename,'r')
+
+  run_data = {}
+  run_stations = {}
+
+  run_data['freq'] = nc_file.variables['freq'][:]
+  run_data['theta'] = nc_file.variables['direc'][:]
+  run_stations['lon'] = nc_file.variables['lon'][:]
+  run_stations['lat'] = nc_file.variables['lat'][:]
+  spectrum = nc_file.variables['spec'][:]
+
+  nc_file.close() 
 
   return run_data,run_stations,spectrum
 
@@ -316,10 +366,14 @@ def plot_cluster_grid(k,method,clustered_spectra,theta,freq,cmap):
     ax = fig.add_subplot(n,n,i+1,polar=True)
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
-    cax = ax.pcolormesh(Theta,Freq,spec_interp,norm=colors.LogNorm(vmin=1e-3,vmax=1.0))
-    cb = fig.colorbar(cax,ticks=ticker.LogLocator(subs=range(10)),fraction=0.07, pad=0.1)
-    ax.plot(np.linspace(0,2*np.pi,100), np.linspace(0,0.5,100), color='k', ls='none') 
-    ax.grid()
+    if log_scale:
+      cax = ax.pcolormesh(Theta,Freq,spec_interp,norm=colors.LogNorm(vmin=1e-3,vmax=1.0))
+      cb = fig.colorbar(cax,ticks=ticker.LogLocator(subs=range(10)),fraction=0.07, pad=0.1)
+      ax.plot(np.linspace(0,2*np.pi,100), np.linspace(0,0.5,100), color='k', ls='none') 
+      ax.grid()
+    else:
+      cax = ax.contourf(Theta,Freq,spec_interp,30)
+      cb = fig.colorbar(cax,fraction=0.07, pad=0.1)
   
   # Plot color of cluster behind each subplot
   fig.tight_layout()
@@ -470,7 +524,18 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
 
 if __name__ == '__main__':
 
-  run_data,run_stations,model_spectra = get_averaged_model_spectra(run_direcs,month,normalize)
+  
+  # Read in spectral data
+  if normalize:
+    filename = 'averaged_month_'+str(month).zfill(2)+'_normalized_spectrum.nc'
+  else:
+    filename = 'averaged_month_'+str(month).zfill(2)+'_spectrum.nc'
+
+  if os.path.isfile(filename):
+    run_data,run_stations,model_spectra = read_averaged_model_spectra(filename)
+  else:
+    run_data,run_stations,model_spectra = get_averaged_model_spectra(run_direcs,month,normalize)
+    write_averaged_model_spectra(filename,run_data,run_stations,model_spectra)
   
   for method in cluster_methods:
     for k in k_vals: 
