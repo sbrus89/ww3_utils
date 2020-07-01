@@ -140,8 +140,8 @@ if iceberg_damping_interp.shape != shape_ice:
   
     # Find iceberg time window that corresponds with ice time
     t_ice = ref_date_ice + datetime.timedelta(hours=t)
-    print datetime.datetime.strftime(t_ice,'%Y-%m-%d %H:%M:%S') 
-    print datetime.datetime.strftime(t_iceberg1,'%Y-%m-%d %H:%M:%S'),datetime.datetime.strftime(t_iceberg2,'%Y-%m-%d %H:%M:%S')
+    print(datetime.datetime.strftime(t_ice,'%Y-%m-%d %H:%M:%S'))
+    print(datetime.datetime.strftime(t_iceberg1,'%Y-%m-%d %H:%M:%S'),datetime.datetime.strftime(t_iceberg2,'%Y-%m-%d %H:%M:%S'))
     if (t_ice > t_iceberg2):
       i_iceberg = i_iceberg + 1
       t_iceberg1 = t_iceberg2
@@ -158,6 +158,9 @@ if iceberg_damping_interp.shape != shape_ice:
       iceberg_damping_final[i,:,:] = phi1*iceberg_damping_interp[i_iceberg,:,:] + phi2*iceberg_damping_interp[i_iceberg+1,:,:]
     elif cfg['interp_type'] == 'constant':
       iceberg_damping_final[i,:,:] = iceberg_damping_interp[i_iceberg,:,:]
+    else:
+      print("unrecognized interpolation option")
+      raise SystemExit(0)
   
     # Plot timesnaps
     if i % 20 == 0:
@@ -186,6 +189,7 @@ subprocess.call(['cp',cfg['ice_file'],dest])
 ncfile = netCDF4.Dataset(dest,'a')
 
 # Add the iceberg data
+print('Writing NetCDF file')
 if 'iceberg_damping' not in ncfile.variables.keys():
   nc_iceberg_damping = ncfile.createVariable('iceberg_damping','f8',('time','lat','lon'),fill_value=3.4e38)
 nc_iceberg_damping[:] = iceberg_damping_final
@@ -193,3 +197,4 @@ nc_iceberg_damping.units = 'km-1'
 nc_iceberg_damping.long_name = 'iceberg damping'
 nc_iceberg_damping.product_description = 'Portion of the incoming wave energy blocked by icebergs over a unit propagation distance. Calculated using Eqn (2) in Ardhuin et al. Observation and parameterization of small icebergs: Drifting breakwaters in the southern ocean. Ocean Modelling. 2011.'
 ncfile.close()
+print('Done')
