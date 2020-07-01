@@ -185,7 +185,7 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
           if (file_datetime >= month_start) and (file_datetime <= month_end):
             in_range = True
             print(run['sign'],f)
-     
+
             # Read in and compute fields to plot
             if j == 0:
               lon,lat,var,output_date = read_field_ww3(f)
@@ -194,7 +194,6 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
             else:
               lon,lat,var,output_date = difference_fields(lon,lat,var,output_date,run['sign'],f)
 
-            
         if in_range:
 
           if reanalysis_files:
@@ -202,7 +201,6 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
             reanalysis_data = ma.masked_outside(reanalysis_data,0.18,0.80) 
 
             var = ma.array(var,mask=reanalysis_data.mask)
-        
 
           if metric == 'average':
             # Initialize average array
@@ -232,6 +230,34 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
             #plt.savefig('ice_mask_'+file_datetime.strftime('%Y-%m-%d-%H')+'.png')
             #plt.close()
 
+          elif metric == 'var':
+            if count == 0:
+              count_array = np.zeros(var.shape)
+              ones_array = np.ones(var.shape) 
+              var_avg = np.zeros(var.shape)
+              M = np.zeros(var.shape)
+              S = np.zeros(var.shape)
+            # Deal with mask from reanalysis
+            if reanalysis_files:
+              ones = ma.array(ones_array,mask=reanalysis_data.mask)
+              ones = ones.filled(fill_value=0.0)
+            else:
+              ones = ones_array
+
+            count_array = count_array + ones 
+            idx = np.where((count_array < 1.1) & (count_array > 0.9))
+            M[idx] = var[idx]
+
+            var = var.filled(fill_value=0.0)
+            delta_old = var-M
+
+            M_update = ma.array(np.divide((var-M),count_array),mask=reanalysis_data.mask)
+            M_update = M_update.filled(fill_value = 0.0)
+            M = M + M_update
+            S_update =  ma.array(np.multiply(delta_old,var-M),mask=reanalysis_data.mask)
+            S_update = S_update.filled(fill_value = 0.0)
+            S = S + S_update
+
           elif metric == 'max':
             # Initialize max array
             if count == 0:
@@ -260,11 +286,16 @@ def compute_metric(metric,year_start,year_end,solutions,month=None,year=None,sea
 
           count = count + 1
           print("")
-    
+
   # Compute average
   if metric == 'average':
     #var_avg = var_avg/float(count)
     var_avg = np.divide(var_avg,count_array)
+  if metric == 'var':
+    idx = np.where(count_array > 0.0)
+    idx_nan = np.where(count_array < 0.1 )
+    var_avg[idx] = np.divide(S[idx],count_array[idx]-1)
+    var_avg[idx_nan] = np.nan
 
   #return lon,lat,var_avg
   return lon,lat,var_avg
