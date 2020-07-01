@@ -29,20 +29,20 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
   
   # Checks
   if queue not in queues:
-    print "queue not supported on " + machine
+    print("queue not supported on " + machine)
     raise SystemExit(0)
 
   if ncores > 1 and ncores % cores_per_node != 0:
-    print "number of cores should be multple of the number of cores per node"
+    print("number of cores should be multple of the number of cores per node")
     raise SystemExit(0)
 
   if ncores > queues[queue]['np_max'] or ncores < queues[queue]['np_min']:
-    print "number of cores requested is not in allowed range for queue"
+    print("number of cores requested is not in allowed range for queue")
     raise SystemExit(0)
   
   if time:
     if time > queues[queue]['t_lim']:
-      print "time exceeds time limit of queue"
+      print("time exceeds time limit of queue")
       raise SystemExit(0)
   else:
     time = queues[queue]['t_lim']  
