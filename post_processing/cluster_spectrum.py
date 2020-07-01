@@ -30,6 +30,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import r2_score
 np.set_printoptions(threshold=sys.maxsize,linewidth=1000)
 
+# Don't use interactive plotting on IC machines
 host = socket.gethostname()
 if host[0:2] == 'gr' or host[0:2] == 'ba':
   plt.switch_backend('agg')
@@ -37,7 +38,7 @@ if host[0:2] == 'gr' or host[0:2] == 'ba':
 else:
   interactive = True
 
-
+# Read in config file 
 pwd = os.getcwd()
 config_file = pwd+'/cluster_spectrum.config'
 if os.path.exists(config_file):
@@ -51,19 +52,26 @@ else:
   run_direcs = ['./test_model_data/']
   month = 7
 
-#interactive = False
-#k_vals = [16,25,36] 
-#cluster_methods = ['agglomerative','kmeans','mixture']
+##########################################################################
+##########################################################################
+# User-defined options 
+##########################################################################
+##########################################################################
+
 k_vals = [16]
+#k_vals = [16,25,36] 
 cluster_methods = ['kmeans']
+#cluster_methods = ['agglomerative','kmeans','mixture']
 normalize = True
 error_metrics = ['RMSE','L2','SMAPE','R2'] 
 lat_min = -65.0
 lat_max = 65.0
 log_scale = False
-#lat_min = -90.0
-#lat_max = 90.0
+#interactive = False
 
+##########################################################################
+##########################################################################
+# Input functions
 ##########################################################################
 ##########################################################################
 
@@ -195,6 +203,56 @@ def read_averaged_model_spectra(filename):
 
 ##########################################################################
 ##########################################################################
+# Clustering functions
+##########################################################################
+##########################################################################
+
+def cluster_spectra(k,method,spectrum,run_stations):
+
+  print('Performing '+method+' clustering')
+  t0 = time.time()
+  if method == 'kmeans':
+    clustered = KMeans(n_clusters=k,random_state=0).fit(spectrum)
+    spec = clustered.cluster_centers_
+    labels = clustered.labels_
+  elif method == 'pca': 
+    clustered = PCA(n_components=k).fit(spectrum)
+    spec = clustered.components_
+  elif method == 'dbscan':
+    clustered = DBSCAN(eps=4.0,min_samples=1).fit(spectrum)
+    labels = clustered.labels_
+    k = np.amax(labels)+1
+    idx, = np.where(labels==-1)
+    print(np.amax(labels))
+    print(idx.shape)
+    spec = np.zeros((k,spectrum.shape[1]))
+    print(spec.shape)
+    print(spectrum.shape)
+    for i in range(k):
+      idx, = np.where(labels==i)
+      spec[i,:] = np.mean(spectrum[idx,:],axis=0)
+  elif method == 'mixture':
+    clustered = GaussianMixture(n_components=k)
+    spec = clustered.fit(spectrum).means_
+    labels = clustered.predict(spectrum)
+  elif method == 'agglomerative':
+    #station_connectivity = compute_connectivity(run_stations['name'])
+    #clustered = AgglomerativeClustering(n_clusters=k,linkage='ward',connectivity=station_connectivity).fit(spectrum)
+    clustered = AgglomerativeClustering(n_clusters=k,linkage='ward').fit(spectrum)
+    labels = clustered.labels_
+    spec = calculate_cluster_averages(k,labels,spectrum) 
+  elif method == 'spectral':
+    #clustered = SpectralClustering(n_clusters=k,affinity=calculate_R2,random_state=0).fit(spectrum)
+    clustered = SpectralClustering(n_clusters=k,affinity='linear',random_state=0).fit(spectrum)
+    labels = clustered.labels_
+    spec = calculate_cluster_averages(k,labels,spectrum) 
+  t1 = time.time()
+  print("elapsed time = ",t1-t0)
+    
+  return labels,spec,k
+
+##########################################################################
+##########################################################################
 
 def compute_connectivity(stations):
 
@@ -262,201 +320,10 @@ def calculate_cluster_averages(k,labels,model_spectra):
 
 ##########################################################################
 ##########################################################################
-
-def calculate_R2(x,y):
-  
-  xbar = np.mean(x)
-  ybar = np.mean(y)
-  top = np.dot(x-xbar,y-ybar)
-  bottom = np.sqrt(np.dot(x-xbar,x-xbar))*np.sqrt(np.dot(y-ybar,y-ybar))
-  r_value = top/bottom
-
-  return r_value**2
-
+# Cluster plotting functions
 ##########################################################################
 ##########################################################################
 
-def calculate_SMAPE(x,y):
-
-  return np.mean(np.divide(np.absolute(x-y),np.absolute(x)+np.absolute(y)))
-
-##########################################################################
-##########################################################################
-
-def cluster_spectra(k,method,spectrum,run_stations):
-
-  print('Performing '+method+' clustering')
-  t0 = time.time()
-  if method == 'kmeans':
-    clustered = KMeans(n_clusters=k,random_state=0).fit(spectrum)
-    spec = clustered.cluster_centers_
-    labels = clustered.labels_
-  elif method == 'pca': 
-    clustered = PCA(n_components=k).fit(spectrum)
-    spec = clustered.components_
-  elif method == 'dbscan':
-    clustered = DBSCAN(eps=4.0,min_samples=1).fit(spectrum)
-    labels = clustered.labels_
-    k = np.amax(labels)+1
-    idx, = np.where(labels==-1)
-    print(np.amax(labels))
-    print(idx.shape)
-    spec = np.zeros((k,spectrum.shape[1]))
-    print(spec.shape)
-    print(spectrum.shape)
-    for i in range(k):
-      idx, = np.where(labels==i)
-      spec[i,:] = np.mean(spectrum[idx,:],axis=0)
-  elif method == 'mixture':
-    clustered = GaussianMixture(n_components=k)
-    spec = clustered.fit(spectrum).means_
-    labels = clustered.predict(spectrum)
-  elif method == 'agglomerative':
-    #station_connectivity = compute_connectivity(run_stations['name'])
-    #clustered = AgglomerativeClustering(n_clusters=k,linkage='ward',connectivity=station_connectivity).fit(spectrum)
-    clustered = AgglomerativeClustering(n_clusters=k,linkage='ward').fit(spectrum)
-    labels = clustered.labels_
-    spec = calculate_cluster_averages(k,labels,spectrum) 
-  elif method == 'spectral':
-    #clustered = SpectralClustering(n_clusters=k,affinity=calculate_R2,random_state=0).fit(spectrum)
-    clustered = SpectralClustering(n_clusters=k,affinity='linear',random_state=0).fit(spectrum)
-    labels = clustered.labels_
-    spec = calculate_cluster_averages(k,labels,spectrum) 
-  t1 = time.time()
-  print("elapsed time = ",t1-t0)
-    
-  return labels,spec,k
-
-##########################################################################
-##########################################################################
-
-def get_colormap(k):
-
-  # Get colormap
-  cmap1 = cm.get_cmap('tab20b')(range(20))
-  cmap2 = cm.get_cmap('tab20c')(range(20))
-  cmap = ListedColormap(np.vstack((cmap1,cmap2)))
-  cmap = ListedColormap(cmap(range(k)))
-
-  ## Plot colors
-  #fig = plt.figure()
-  #x = np.arange(k)
-  #plt.scatter(x,x,c=x,cmap=cmap)
-  #fig.savefig('colors.png',bbox_inches='tight')
-  #plt.close()
-
-  return cmap
-
-##########################################################################
-##########################################################################
-
-def plot_cluster_grid(k,method,clustered_spectra,theta,freq,cmap):
-  print('Plotting grid of cluster centers')
-  print(clustered_spectra.shape)
-  
-  ndir = 37
-  nfreq = 48
-  
-  n = int(np.ceil(np.sqrt(k)))
-  
-  fig = plt.figure(figsize=[18,18])
-  for i in range(k):
-    spectrum_cluster = np.reshape(clustered_spectra[i,:],(freq.size,theta.size)).T  
-    Theta,Freq,spec_interp = directional_spectrum.interp_model_spectrum(theta,freq,spectrum_cluster,ndir,nfreq) 
-  
-    # Plot spectrum
-    ax = fig.add_subplot(n,n,i+1,polar=True)
-    ax.set_theta_zero_location("N")
-    ax.set_theta_direction(-1)
-    if log_scale:
-      cax = ax.pcolormesh(Theta,Freq,spec_interp,norm=colors.LogNorm(vmin=1e-3,vmax=1.0))
-      cb = fig.colorbar(cax,ticks=ticker.LogLocator(subs=range(10)),fraction=0.07, pad=0.1)
-      ax.plot(np.linspace(0,2*np.pi,100), np.linspace(0,0.5,100), color='k', ls='none') 
-      ax.grid()
-    else:
-      cax = ax.contourf(Theta,Freq,spec_interp,30)
-      cb = fig.colorbar(cax,fraction=0.07, pad=0.1)
-  
-  # Plot color of cluster behind each subplot
-  fig.tight_layout()
-  h = 1.0/float(n)
-  c = 0
-  for j in range(n):
-    for i in range(n):
-     rect = [Rectangle([0.0+(i*h),1.0-(j*h)-h],h,h,facecolor=cmap(c),edgecolor='none',zorder=-1,transform=fig.transFigure)]
-     c = c +1
-     fig.patches.extend(rect)
-  
-  fig.savefig('k_spectra_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
-  plt.close()
-
-##########################################################################
-##########################################################################
-
-def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,station_lon,station_lat):
-
-  print('Plotting '+metric+' error between station spectra and cluster centers')
-  nstations = model_spectra.shape[0]
-  cluster_error = np.zeros(nstations)
-  for sta in range(nstations):
-    spectrum_model = model_spectra[sta,:]
-    spectrum_cluster = clustered_spectra[labels[sta],:]
-    #row_min = np.amin(spectrum_cluster)
-    #row_max = np.amax(spectrum_cluster)
-    #spectrum_cluster = (spectrum_cluster-row_min)/(row_max-row_min)
-    if metric == 'RMSE':
-      cluster_error[sta] = np.sqrt(np.mean(np.square(spectrum_model-spectrum_cluster)))
-      vmax = 0.75*np.amax(cluster_error)
-      vmin = np.amin(cluster_error)
-    elif metric == 'L2':
-      cluster_error[sta] = np.sqrt(np.sum(np.square(spectrum_model-spectrum_cluster)))
-      vmax = 0.75*np.amax(cluster_error)
-      vmin = np.amin(cluster_error)
-    elif metric == 'SMAPE':
-      cluster_error[sta] = np.mean(np.divide(np.absolute(spectrum_model-spectrum_cluster),np.absolute(spectrum_model)+np.absolute(spectrum_cluster)))
-      vmax = 1.0
-      vmin = 0.0
-    elif metric == 'R2':
-      slope,intercept,r_value,p_value,std_err = stats.linregress(spectrum_model,spectrum_cluster)
-      cluster_error[sta] = r_value**2
-      vmax = 1.0
-      vmin = 0.0
-
-  fig = plt.figure(figsize=[16.0,6.0])
-  crs = ccrs.PlateCarree(central_longitude=180)
-  ax = fig.add_subplot(111,projection=crs)
-  ax.set_extent([0.0, 359.99, np.amin(station_lat), np.amax(station_lat)],crs=crs)
-  ax.add_feature(cfeature.LAND)
-  ax.add_feature(cfeature.LAKES)
-  ax.add_feature(cfeature.COASTLINE)
-  cax = ax.scatter(station_lon+180.0,station_lat,c=cluster_error,vmax=vmax,vmin=vmin,transform=crs)
-  cb = fig.colorbar(cax)
-  plt.title(method+' '+metric+' values for k='+str(k))
-  fig.savefig('cluster_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
-  plt.close()
-
-  fig = plt.figure()
-  ax = fig.add_subplot(111)
-  ax.hist(cluster_error,range=(vmin,vmax),bins=20,cumulative=True)
-  ax2 = ax.twinx()
-  ax_ylim = ax.get_ylim()
-  ax2.set_ylim([0,ax_ylim[1]/cluster_error.size*100])
-  plt.title(method+' '+metric+' cdf for k='+str(k))
-  fig.savefig('cdf_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
-  plt.close()
-
-  fig = plt.figure()
-  ax = fig.add_subplot(111)
-  ax.hist(cluster_error,range=(vmin,vmax),bins=20)
-  ax2 = ax.twinx()
-  ax_ylim = ax.get_ylim()
-  ax2.set_ylim([0,ax_ylim[1]/cluster_error.size*100])
-  plt.title(method+' '+metric+' histogram for k='+str(k))
-  fig.savefig('hist_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
-  plt.close()
-
-##########################################################################
-##########################################################################
 def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clustered_spectra,model_spectra,cmap):
 
   if method == 'pca':
@@ -529,15 +396,170 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
 ##########################################################################
 ##########################################################################
 
+def plot_cluster_grid(k,method,clustered_spectra,theta,freq,cmap):
+  print('Plotting grid of cluster centers')
+  print(clustered_spectra.shape)
+  
+  ndir = 37
+  nfreq = 48
+  
+  n = int(np.ceil(np.sqrt(k)))
+  
+  fig = plt.figure(figsize=[18,18])
+  for i in range(k):
+    spectrum_cluster = np.reshape(clustered_spectra[i,:],(freq.size,theta.size)).T  
+    Theta,Freq,spec_interp = directional_spectrum.interp_model_spectrum(theta,freq,spectrum_cluster,ndir,nfreq) 
+  
+    # Plot spectrum
+    ax = fig.add_subplot(n,n,i+1,polar=True)
+    ax.set_theta_zero_location("N")
+    ax.set_theta_direction(-1)
+    if log_scale:
+      cax = ax.pcolormesh(Theta,Freq,spec_interp,norm=colors.LogNorm(vmin=1e-3,vmax=1.0))
+      cb = fig.colorbar(cax,ticks=ticker.LogLocator(subs=range(10)),fraction=0.07, pad=0.1)
+      ax.plot(np.linspace(0,2*np.pi,100), np.linspace(0,0.5,100), color='k', ls='none') 
+      ax.grid()
+    else:
+      cax = ax.contourf(Theta,Freq,spec_interp,30)
+      cb = fig.colorbar(cax,fraction=0.07, pad=0.1)
+  
+  # Plot color of cluster behind each subplot
+  fig.tight_layout()
+  h = 1.0/float(n)
+  c = 0
+  for j in range(n):
+    for i in range(n):
+     rect = [Rectangle([0.0+(i*h),1.0-(j*h)-h],h,h,facecolor=cmap(c),edgecolor='none',zorder=-1,transform=fig.transFigure)]
+     c = c +1
+     fig.patches.extend(rect)
+  
+  fig.savefig('k_spectra_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
+  plt.close()
+
+##########################################################################
+##########################################################################
+
+def get_colormap(k):
+
+  # Get colormap
+  cmap1 = cm.get_cmap('tab20b')(range(20))
+  cmap2 = cm.get_cmap('tab20c')(range(20))
+  cmap = ListedColormap(np.vstack((cmap1,cmap2)))
+  cmap = ListedColormap(cmap(range(k)))
+
+  ## Plot colors
+  #fig = plt.figure()
+  #x = np.arange(k)
+  #plt.scatter(x,x,c=x,cmap=cmap)
+  #fig.savefig('colors.png',bbox_inches='tight')
+  #plt.close()
+
+  return cmap
+
+##########################################################################
+##########################################################################
+# Error plotting functions
+##########################################################################
+##########################################################################
+
+def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,station_lon,station_lat):
+
+  print('Plotting '+metric+' error between station spectra and cluster centers')
+  nstations = model_spectra.shape[0]
+  cluster_error = np.zeros(nstations)
+  for sta in range(nstations):
+    spectrum_model = model_spectra[sta,:]
+    spectrum_cluster = clustered_spectra[labels[sta],:]
+    #row_min = np.amin(spectrum_cluster)
+    #row_max = np.amax(spectrum_cluster)
+    #spectrum_cluster = (spectrum_cluster-row_min)/(row_max-row_min)
+    if metric == 'RMSE':
+      cluster_error[sta] = np.sqrt(np.mean(np.square(spectrum_model-spectrum_cluster)))
+      vmax = 0.75*np.amax(cluster_error)
+      vmin = np.amin(cluster_error)
+    elif metric == 'L2':
+      cluster_error[sta] = np.sqrt(np.sum(np.square(spectrum_model-spectrum_cluster)))
+      vmax = 0.75*np.amax(cluster_error)
+      vmin = np.amin(cluster_error)
+    elif metric == 'SMAPE':
+      cluster_error[sta] = np.mean(np.divide(np.absolute(spectrum_model-spectrum_cluster),np.absolute(spectrum_model)+np.absolute(spectrum_cluster)))
+      vmax = 1.0
+      vmin = 0.0
+    elif metric == 'R2':
+      slope,intercept,r_value,p_value,std_err = stats.linregress(spectrum_model,spectrum_cluster)
+      cluster_error[sta] = r_value**2
+      vmax = 1.0
+      vmin = 0.0
+
+  fig = plt.figure(figsize=[16.0,6.0])
+  central_longitude = 205.0
+  crs = ccrs.PlateCarree(central_longitude)
+  ax = fig.add_subplot(111,projection=crs)
+  ax.set_extent([0.0, 359.99, np.amin(station_lat), np.amax(station_lat)],crs=crs)
+  ax.add_feature(cfeature.LAND)
+  ax.add_feature(cfeature.LAKES)
+  ax.add_feature(cfeature.COASTLINE)
+  cax = ax.scatter(station_lon+360.0-central_longitude,station_lat,c=cluster_error,vmax=vmax,vmin=vmin,transform=crs)
+  cb = fig.colorbar(cax)
+  plt.title(method+' '+metric+' values for k='+str(k))
+  fig.savefig('cluster_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
+  plt.close()
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.hist(cluster_error,range=(vmin,vmax),bins=20,cumulative=True)
+  ax2 = ax.twinx()
+  ax_ylim = ax.get_ylim()
+  ax2.set_ylim([0,ax_ylim[1]/cluster_error.size*100])
+  plt.title(method+' '+metric+' cdf for k='+str(k))
+  fig.savefig('cdf_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
+  plt.close()
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.hist(cluster_error,range=(vmin,vmax),bins=20)
+  ax2 = ax.twinx()
+  ax_ylim = ax.get_ylim()
+  ax2.set_ylim([0,ax_ylim[1]/cluster_error.size*100])
+  plt.title(method+' '+metric+' histogram for k='+str(k))
+  fig.savefig('hist_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
+  plt.close()
+
+##########################################################################
+##########################################################################
+
+def calculate_R2(x,y):
+  
+  xbar = np.mean(x)
+  ybar = np.mean(y)
+  top = np.dot(x-xbar,y-ybar)
+  bottom = np.sqrt(np.dot(x-xbar,x-xbar))*np.sqrt(np.dot(y-ybar,y-ybar))
+  r_value = top/bottom
+
+  return r_value**2
+
+##########################################################################
+##########################################################################
+
+def calculate_SMAPE(x,y):
+
+  return np.mean(np.divide(np.absolute(x-y),np.absolute(x)+np.absolute(y)))
+
+##########################################################################
+##########################################################################
+# Main program
+##########################################################################
+##########################################################################
+
 if __name__ == '__main__':
 
-  
-  # Read in spectral data
+  # Set name of pre-computed average file 
   if normalize:
     filename = 'averaged_month_'+str(month).zfill(2)+'_normalized_spectrum.nc'
   else:
     filename = 'averaged_month_'+str(month).zfill(2)+'_spectrum.nc'
 
+  # Read in spectral data (perform averaging if pre-computed file doesn't exist)
   if os.path.isfile(filename):
     run_data,run_stations,model_spectra = read_averaged_model_spectra(filename)
   else:
