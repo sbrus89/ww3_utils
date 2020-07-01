@@ -75,7 +75,7 @@ def prep_grid(pwd,skip_existing=False,skip_grid=False,ignore_existing=False,requ
     elif ignore_existing:
       run_grid = 'y'
     else:
-      run_grid = raw_input('mod_def.ww3 file exists, run ww3_grid? ')
+      run_grid = input('mod_def.ww3 file exists, run ww3_grid? ')
   else:
     if require_existing:
       print('mod_def.ww3 file does not exist, quitting...')
@@ -103,7 +103,7 @@ def prep_ic(pwd,skip_existing=False,skip_strt=False,ignore_existing=False,requir
     elif ignore_existing:
       run_strt = 'y'
     else:
-      run_strt = raw_input('restart.ww3 file exists, run ww3_strt? ')
+      run_strt = input('restart.ww3 file exists, run ww3_strt? ')
   else:
     if require_existing:
       print('restart.ww3 file does not exist, quitting...')
@@ -164,7 +164,7 @@ def prep_forcing(pwd,cfg,skip_existing=False,skip_prnc=False,ignore_existing=Fal
         elif ignore_existing:
           run_prnc = 'y'
         else:
-          run_prnc = raw_input(forcing+'.ww3 file exists, run ww3_prnc? ')
+          run_prnc = input(forcing+'.ww3 file exists, run ww3_prnc? ')
       else:
         if require_existing:
           print(forcing+'.ww3 file does not exist, quitting...')
@@ -204,7 +204,7 @@ def prep_shel(pwd,skip_existing=False,ignore_existing=False,require_existing=Fal
     elif ignore_existing:
       gen_shel = 'y'
     else:
-      gen_shel = raw_input('ww3_shel.inp file exists, run ww3_shel.py?')
+      gen_shel = input('ww3_shel.inp file exists, run ww3_shel.py?')
   else:
     if require_existing:
       print('ww3_shel.inp does not exist, quitting...')
@@ -365,7 +365,7 @@ if __name__ == '__main__':
       if len(pre_cmds) > 0:
         subprocess.call(pre_cmds[0],shell=True)
 
-      pause = raw_input("Beginning model run...")
+      pause = input("Beginning model run...")
 
       f = open('restart001.ww3','w')
       f.write('Test restart file for '+end)
@@ -399,9 +399,9 @@ if __name__ == '__main__':
       f.write('   --------+------+---------------------+-------------------+---------------+'+'\n')
       f.close()
 
-      pause = raw_input("End of model run")
+      pause = input("End of model run")
       subprocess.call(post_cmds[0],shell=True)
-      pause = raw_input("End of restart setup")
+      pause = input("End of restart setup")
      
     
  
