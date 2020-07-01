@@ -129,7 +129,8 @@ def read_model_data(files,mode=None,stations=[]):
     # Get time and output variables
     if i == 0:
       data['time'] = nc_file.variables['time'][:]
-    efth = nc_file.variables['efth'][0,station_ind,:,theta_ind]
+    efth = nc_file.variables['efth'][0,station_ind,:,:]
+    efth = efth[:,:,theta_ind]
     nc_file.close()
 
     # Add averaged data for the  0,2*pi directions
