@@ -13,7 +13,7 @@ def write_ww3_strt_inp():
   pprint.pprint(cfg)
 
   if cfg["itype"] in ['1','2','4']:
-    print "itype not implemented"
+    print("itype not implemented")
     return
   
   f = open(pwd+'/ww3_strt.inp','w')
