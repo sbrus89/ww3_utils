@@ -14,7 +14,9 @@ from matplotlib.colors import ListedColormap
 from matplotlib.colors import LogNorm 
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
+import cartopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 from scipy import interpolate
 from scipy import sparse
 from scipy import stats
@@ -421,11 +423,13 @@ def plot_cluster_error(k,method,metric,labels,model_spectra,clustered_spectra,st
       vmin = 0.0
 
   fig = plt.figure(figsize=[16.0,6.0])
-  m = Basemap(projection='cyl',llcrnrlat=np.amin(station_lat),urcrnrlat=np.amax(station_lat),\
-                               llcrnrlon=0,urcrnrlon=360,resolution='c')
-  m.fillcontinents(color='tan',lake_color='lightblue')
-  m.drawcoastlines()
-  cax = plt.scatter(np.mod(station_lon+360,360),station_lat,c=cluster_error,vmax=vmax,vmin=vmin)
+  crs = ccrs.PlateCarree(central_longitude=180)
+  ax = fig.add_subplot(111,projection=crs)
+  ax.set_extent([0.0, 359.99, np.amin(station_lat), np.amax(station_lat)],crs=crs)
+  ax.add_feature(cfeature.LAND)
+  ax.add_feature(cfeature.LAKES)
+  ax.add_feature(cfeature.COASTLINE)
+  cax = ax.scatter(station_lon+180.0,station_lat,c=cluster_error,vmax=vmax,vmin=vmin,transform=crs)
   cb = fig.colorbar(cax)
   plt.title(method+' '+metric+' values for k='+str(k))
   fig.savefig('cluster_'+metric+'_'+method+'_k='+str(k)+'.png',bbox_inches='tight')
@@ -500,13 +504,16 @@ def plot_station_scatter(k,method,labels,station_lon,station_lat,theta,freq,clus
 
   # Plot scatterplot of clustered stations
   fig = plt.figure(figsize=[16.0,6.0])
-  m = Basemap(projection='cyl',llcrnrlat=np.amin(station_lat),urcrnrlat=np.amax(station_lat),\
-                               llcrnrlon=0,urcrnrlon=360,resolution='c')
-  m.fillcontinents(color='tan',lake_color='lightblue')
-  m.drawcoastlines()
+  central_longitude = 205.0
+  crs = ccrs.PlateCarree(central_longitude)
+  ax = fig.add_subplot(111,projection=crs)
+  ax.set_extent([0.0,359.99,np.amin(station_lat),np.max(station_lat)],crs=crs)
+  ax.add_feature(cfeature.LAND)
+  ax.add_feature(cfeature.LAKES)
+  ax.add_feature(cfeature.COASTLINE)
   plt.title(method+' clusters for k='+str(k))
   if interactive:
-    cax = plt.scatter(np.mod(station_lon+360,360),station_lat,c=labels,cmap=cmap,picker=True)
+    cax = ax.scatter(station_lon+360.0-central_longitude,station_lat,c=labels,cmap=cmap,picker=True,transform=crs)
     fig.canvas.mpl_connect('pick_event',onpick)
     cb = fig.colorbar(cax)
     fig.tight_layout()
