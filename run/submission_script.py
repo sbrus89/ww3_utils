@@ -1,26 +1,39 @@
 import datetime
 
-def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,filename='run.sub',account='e3sm',email='sbrus@lanl.gov',pre_cmds=[],post_cmds=[]):
+def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,filename='run.sub',account='e3sm',email='sbrus@lanl.gov',pre_cmds=[],post_cmds=[],compiler='intel'):
 
   # Machine specific settings
   if machine == "grizzly":
     cores_per_node = 36
-    module_load = ['python/anaconda-2.7-climate',
-                   'gcc/5.3.0',
-                   'openmpi/1.10.5',
-                   'netcdf/4.4.1 ',
-                   'parallel-netcdf/1.5.0 ',
-                   'pio/1.7.2']
+    if compiler == 'gnu':
+      module_load = ['gcc/5.3.0',
+                     'openmpi/1.10.5',
+                     'netcdf/4.4.1 ',
+                     'parallel-netcdf/1.5.0 ',
+                     'pio/1.7.2']
+    elif compiler == 'intel':
+      module_load = ['intel/17.0.1',
+                     'mvapich2/2.2',
+                     'netcdf/4.4.1 ',
+                     'parallel-netcdf/1.5.0 ',
+                     'pio/1.7.2']
+    else:
+      print('compiler not supported')
+      raise SystemExit(0)
     module_purge = True
     module_use = ['/usr/projects/climate/SHARED_CLIMATE/modulefiles/all/']
     queues = {'standard'   :{'np_min':1   ,'np_max':53640,'t_lim':16.0},
               'interactive':{'np_min':1   ,'np_max':2520 ,'t_lim':4.0 }}
   elif machine == "badger":
     cores_per_node = 36
-    module_load = ['gcc/7.4.0',
-                   'openmpi/2.1.2',
-                   'hdf5-serial/1.8.16',
-                   'netcdf-serial/4.4.0']
+    if compiler == 'gnu':
+      module_load = ['gcc/7.4.0',
+                     'openmpi/2.1.2',
+                     'hdf5-serial/1.8.16',
+                     'netcdf-serial/4.4.0']
+    else:
+      print('compiler not supported')
+      raise SystemExit(0)
     module_purge = True
     module_use = []
     queues = {'standard'   :{'np_min':1,'np_max':3600,'t_lim':16.0},
@@ -48,7 +61,7 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
     time = queues[queue]['t_lim']  
 
   # Calculate some parameters
-  nnodes = ncores/cores_per_node
+  nnodes = int(ncores/cores_per_node)
   if nnodes < 1:
     nnodes = 1
   time = str(datetime.timedelta(hours=time))
@@ -113,6 +126,7 @@ if __name__ == '__main__':
   parser.add_argument("--email"     ,type=str,   help="email to send run information", default='sbrus@lanl.gov')
   parser.add_argument("--pre_cmds"  ,type=str,   help="commands to run before main executable", nargs='*',default=[])
   parser.add_argument("--post_cmds" ,type=str,   help="commands to run after main executable" , nargs='*',default=[])
+  parser.add_argument("--compiler"   ,type=str,   help="compiler name"          , default='intel')
   args = parser.parse_args()
 
   # Determine machine
@@ -136,6 +150,7 @@ if __name__ == '__main__':
                           args.account,
                           args.email,
                           args.pre_cmds,
-                          args.post_cmds)
+                          args.post_cmds,
+                          args.compiler)
  
  
