@@ -259,7 +259,7 @@ def read_station_file(station_file):
 ################################################################################################
 ################################################################################################
 
-def read_station_data(obs_file,min_date,max_date,variables):
+def read_station_data(obs_file,min_date,max_date,variables,output_datetime=None):
 
   # Initialize variable for observation data
   obs_data = {}
@@ -289,18 +289,49 @@ def read_station_data(obs_file,min_date,max_date,variables):
     print( 'problem with observed data format')
     raise SystemExit(0)
    
-  # Get data from observation file between min and max output times
-  for line in obs[1:]:
-    if line.find('#') >= 0 or len(line.strip()) == 0 or not line[0].isdigit():
-      continue
-    date = line[0:date_length]
-    date_time = datetime.datetime.strptime(date,obs_frmt)
-    if date_time >= datetime.datetime.strptime(min_date,frmt) and \
-       date_time <= datetime.datetime.strptime(max_date,frmt):
-      obs_data['datetime'].append(date_time)
-      for var in variables:
-        col = variables[var]['obs_col'] + col_offset
-        obs_data[var].append(line.split()[col])
+  if output_datetime is not None:
+    # Get data at specified datetime values
+    nlines = len(obs)
+    lines_searched = 0
+    for time in output_datetime:
+      found = False
+      obs_data['datetime'].append(time)
+      for j in range(lines_searched,nlines):
+        line = obs[j]
+        if line.find('#') >= 0 or len(line.strip()) == 0 or not line[0].isdigit():
+          continue
+        date = line[0:date_length]
+        date_time = datetime.datetime.strptime(date,obs_frmt)
+        if date_time == time:
+          for var in variables:
+            col = variables[var]['obs_col'] + col_offset
+            obs_data[var].append(line.split()[col])
+          lines_searched = j+1
+          found = True
+          break
+        if date_time > time:
+          lines_searched = j
+          break
+        if j == nlines-1 and date_time < time:
+          lines_searched = j
+          break
+      if found == False:
+        for var in variables:
+          obs_data[var].append(variables[var]['fill_val'])
+      #print(obs_data['datetime'][-1],obs_data['hs'][-1])
+  else:
+    # Get data from observation file between min and max output times
+    for line in obs[1:]:
+      if line.find('#') >= 0 or len(line.strip()) == 0 or not line[0].isdigit():
+        continue
+      date = line[0:date_length]
+      date_time = datetime.datetime.strptime(date,obs_frmt)
+      if date_time >= datetime.datetime.strptime(min_date,frmt) and \
+         date_time <= datetime.datetime.strptime(max_date,frmt):
+        obs_data['datetime'].append(date_time)
+        for var in variables:
+          col = variables[var]['obs_col'] + col_offset
+          obs_data[var].append(line.split()[col])
 
   # Convert observation data and replace fill values with nan
   for var in variables:
@@ -316,7 +347,7 @@ def read_station_data(obs_file,min_date,max_date,variables):
 ################################################################################################
 ################################################################################################
 
-def output_time_to_date(output_time,ref_date):
+def output_time_to_date(output_time,ref_date,start_date=None):
 
   output_date = []
   output_datetime = []
@@ -328,8 +359,8 @@ def output_time_to_date(output_time,ref_date):
     adjust_start = True
 
   # Handle reference time
-  if 'start_date' in cfg and adjust_start:                                             # start_time is used to create a common starting
-    start_date = datetime.datetime.strptime(cfg['start_date'],'%Y-%m-%d %H:%M:%S')     # point across runs that start from different initial
+  if start_date and adjust_start:                                             # start_time is used to create a common starting
+    start_date = datetime.datetime.strptime(start_date,'%Y-%m-%d %H:%M:%S')     # point across runs that start from different initial
     offset = -datetime.timedelta(days=output_time[0])                                  # dates i.e. E3SM 0001-01-01, WW3 2005-06-01
   else:
     start_date = ref_date
