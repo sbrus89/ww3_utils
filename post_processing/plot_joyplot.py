@@ -17,12 +17,25 @@ import cartopy.feature as cfeature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from adjustText import adjust_text
 import subprocess
+import pprint
 
 rc('font',**{'family':'serif','serif':['Times New Roman']})
 
 average_error_files = ['2_degree_UOST_PR1.pickle','unstr_4000_UOSTcor_edit2.pickle','1-2_degree_UOST_PR1.pickle']
 
+stations_exclude = ['44035','44039','44033','46216','46087','46081','46053','46027','31201','52200','tybg1']
 stations = plot_points.read_station_file('stations.txt')
+
+grid_colors = ['#7570b3','#d95f02','#1b9e77']
+
+#with open('final_data.pickle','rb') as f:
+#   stations_final,observations_final,data_final,datetime_final = pickle.load(f)
+#pprint.pprint(stations_final)
+#pprint.pprint(observations_final)
+#pprint.pprint(data_final)
+#pprint.pprint(datetime_final)
+#raise SystemExit(0)
+
 
 filename = 'etopo1.nc' 
 nc_data = nc4.Dataset(filename, "r")
@@ -50,6 +63,7 @@ for fname in average_error_files:
     run,xv,yv,metrics,station_list_data,station_depth_data = pickle.load(f)
     average_errors.append({'run_name':run,'xv':xv,'yv':yv,'metrics':metrics,'stations':station_list_data,'depth':station_depth_data})
 
+
 columns = list(errors.keys()) 
 columns.remove('station')
 fsize = (3,9)
@@ -65,12 +79,14 @@ regions = [
            'East_Coast_South',
            'East_Coast_North',
            'HI',
-           'AK',
            'Gulf',
            'West_Coast_South',
            'West_Coast_North',
-           'Caribbean_Atlantic'
+           'Caribbean_Atlantic',
+           'AK'
          ]
+
+exclude_stations = ['tybg1']
 
 for region in regions:
   for feature in fc.features:
@@ -95,6 +111,7 @@ for region in regions:
     stations_include['idx'] = []
     stations_include['name'] = []
     stations_include['coords'] = [] 
+    stations_include['depth'] = []
     for i,sta in enumerate(errors_label):
       idx = stations['name'].index(sta)
   
@@ -105,7 +122,7 @@ for region in regions:
   
       point = shapely.geometry.Point(lon,stations['lat'][idx])
       test = shape.contains(point)
-      if test == True:
+      if (test == True) and  (sta not in exclude_stations):
         print(sta,feature['properties']['name'])
         stations_include['idx'].append(i)
         stations_include['name'].append(sta)
@@ -114,9 +131,33 @@ for region in regions:
         else:
           lon = stations['lon'][idx]
         stations_include['coords'].append([lon,stations['lat'][idx]])
+        ind = average_errors[0]['stations'].index(sta)
+        depth = average_errors[0]['depth'][ind]
+        stations_include['depth'].append(depth)
   
     pprint.pprint(stations_include)
     print(len(stations_include['name']))
+
+
+
+  sta_df = pd.DataFrame.from_dict(stations_include)
+  sta_df_shallow = sta_df[sta_df['depth'] >= -1000]    
+  sta_df_deep = sta_df[sta_df['depth'] < -1000]    
+  df_absrel = pd.DataFrame.from_dict(errors_absrel)
+  df_absrel_shallow = df_absrel[df_absrel['station'].isin(sta_df_shallow['idx'])]
+  print("shallow means")
+  print(df_absrel_shallow.mean())
+  df_absrel_deep= df_absrel[df_absrel['station'].isin(sta_df_deep['idx'])]
+  print("deep means")
+  print(df_absrel_deep.mean())
+  df_abs = pd.DataFrame.from_dict(errors_abs)
+  df_abs_shallow = df_abs[df_abs['station'].isin(sta_df_shallow['idx'])]
+  print("shallow means")
+  print(df_abs_shallow.mean())
+  df_abs_deep= df_abs[df_abs['station'].isin(sta_df_deep['idx'])]
+  print("deep means")
+  print(df_abs_deep.mean())
+  
    
   ###########################################
   # Joy plot 
@@ -143,13 +184,27 @@ for region in regions:
     overlap = 0.5
   else:
     overlap = 1.0
-  fig, axes = joypy.joyplot(df_new, grid=True, column=columns,by='station',kind='normalized_counts',bins=30,alpha=opac, figsize=fsize, x_range=[-2,2],labels=stations_include['name'], legend=False, xlabelsize=12,ylabelsize=12,overlap=overlap)
-  axes[-1].set_title('(a)',loc='center',fontsize=18)
-  axes[-1].set_xlabel('Error (m)',fontsize=12)
+  fig, axes = joypy.joyplot(df_new, grid=True, column=columns,by='station',kind='normalized_counts',bins=30,alpha=opac, figsize=fsize, x_range=[-2,2],labels=stations_include['name'], legend=False, xlabelsize=12,ylabelsize=12,overlap=overlap,color=grid_colors)
+  axes[-1].set_title('(c)',loc='center',fontsize=18)
+  axes[-1].set_xlabel('Error (m)',fontsize=14)
   axes[-1].yaxis.set_visible(True)
   axes[-1].yaxis.set_ticks([])
-  axes[-1].set_ylabel('Station ID',fontsize=12,labelpad=55)
+  axes[-1].set_ylabel('Station ID',fontsize=14,labelpad=55)
   plt.savefig('joyplot_errors_'+region+'.png',bbox_inches='tight',dpi=400)    
+
+  df = pd.DataFrame.from_dict(errors_rel)
+  df_new = df[df['station'].isin(stations_include['idx'])]
+  plt.figure(figsize=fsize)
+  no_labels = []
+  for i in range(len(stations_include['name'])):
+    no_labels.append('')
+  fig, axes = joypy.joyplot(df_new, grid=True, column=columns,by='station',kind='normalized_counts',bins=30,alpha=opac, figsize=fsize, x_range=[-200,200],labels=no_labels, legend=False, xlabelsize=12,ylabelsize=12,overlap=overlap,color=grid_colors)
+  axes[-1].set_title('(d)',loc='center',fontsize=18)
+  axes[-1].set_xlabel('Relative error (%)',fontsize=14)
+  axes[-1].yaxis.set_visible(True)
+  axes[-1].yaxis.set_ticks([])
+  #axes[-1].set_ylabel('Station ID',fontsize=12,labelpad=55)
+  plt.savefig('joyplot_errors_rel'+region+'.png',bbox_inches='tight',dpi=400)    
   print('  done')
 
   ###########################################
@@ -161,13 +216,13 @@ for region in regions:
   crs0 = ccrs.PlateCarree(central_longitude=0)
   crs180 = ccrs.PlateCarree(central_longitude=180)
   if region == 'West_Coast_South':
-    extent_pad = 0.5
+    extent_pad = 0.75
   elif region == 'West_Coast_North':
     extent_pad = 2.0
   elif region == 'East_Coast_North':
-    extent_pad = 1.0
+    extent_pad = 1.1
   elif region == 'AK':
-    extent_pad = 4.0
+    extent_pad = 4.1
   elif region == 'Gulf':
     extent_pad = 2.0
   elif region == 'HI':
@@ -188,16 +243,19 @@ for region in regions:
   extent = [lon_min,lon_max,lat_min,lat_max]
   fig = plt.figure(figsize=[6,6])
   ax = fig.add_subplot(1,1,1,projection=crs180)
-  lon_idx, = np.where((lon_data >= lon_min) & (lon_data <= lon_max))
-  lat_idx, = np.where((lat_data >= lat_min) & (lat_data <= lat_max))
+  if region == 'AK':
+    idx = np.where(lon_data < 0.0)
+    lon_data[idx] = lon_data[idx] + 360.0
+    idx = np.argsort(lon_data)
+    lon_data = lon_data[idx]
+    bathy_data = bathy_data[:,idx]
+  lon_idx, = np.where((lon_data >= lon_min-2.0) & (lon_data <= lon_max+2.0))
+  lat_idx, = np.where((lat_data >= lat_min-2.0) & (lat_data <= lat_max+2.0))
   lon_region = lon_data[lon_idx]
   lat_region = lat_data[lat_idx]
   latlon_idx = np.ix_(lat_idx, lon_idx)
   bathy_region = bathy_data[latlon_idx]
-  #ds = 50                                # Downsample
-  #dsx = np.arange(0, lon_data.size, ds)  # bathy data
-  #dsy = np.arange(0, lat_data.size, ds)  # to speed up
-  #dsxy = np.ix_(dsy, dsx)                # plotting
+  trans = crs0
   colormap = cm.get_cmap('Blues')
   minval = 0.25
   maxval = 1.0 
@@ -206,8 +264,7 @@ for region in regions:
        colormap(np.linspace(minval, maxval, 100)))
 
   levels = np.linspace(0,8000,50)
-  trans = crs0
-  ax.contourf(lon_region,lat_region,bathy_region,levels=levels,transform=trans,cmap=cmap)
+  cf = ax.contourf(lon_region,lat_region,bathy_region,levels=levels,transform=trans,cmap=cmap)
   ax.set_extent(extent)
   ax.set_xticks(np.round_(np.linspace(lon_min,lon_max,5),1),crs=ccrs.PlateCarree())
   ax.set_yticks(np.round_(np.linspace(lat_min,lat_max,5),1),crs=ccrs.PlateCarree())
@@ -215,8 +272,8 @@ for region in regions:
   lat_formatter = LatitudeFormatter()
   ax.xaxis.set_major_formatter(lon_formatter)
   ax.yaxis.set_major_formatter(lat_formatter)
-  ax.set_xlabel('Longitude',fontsize=12)
-  ax.set_ylabel('Latitiude',fontsize=12)
+  ax.set_xlabel('Longitude',fontsize=14)
+  ax.set_ylabel('Latitude',fontsize=14)
   annotations = []
   for i,sta in enumerate(stations_include['name']):
     at_x, at_y = crs180.transform_point(stations_include['coords'][i,0],stations_include['coords'][i,1],crs0)
@@ -228,7 +285,10 @@ for region in regions:
     ax.scatter(x,y,transform=crs180,c='C3')
   ax.add_feature(cfeature.LAND)
   ax.add_feature(cfeature.COASTLINE,edgecolor='gray')
-  ax.set_title('(c)',loc='center',fontsize=18)
+  ax.set_title('(b)',loc='center',fontsize=18)
+  cb = plt.colorbar(cf,ticks=np.linspace(0,8000,9),fraction=0.046,pad=0.02)
+  cb.ax.tick_params(labelsize=12) 
+  cb.set_label('Depth (m)',fontsize=14)
   
   plt.savefig('station_locations_'+region+'.png',bbox_inches='tight',dpi=400)
   print('  done')
@@ -261,7 +321,7 @@ for region in regions:
     ax = fig.add_subplot(len(selected_metrics),1,n)
   
     for j in range(nrun):
-      sc = ax.scatter(xv,average_errors[j]['yv'][idx,i],marker='o',zorder=10,alpha=0.6)
+      sc = ax.scatter(xv,average_errors[j]['yv'][idx,i],marker='o',zorder=10,alpha=0.6,c=grid_colors[j])
       if n == 1:
         scatters.append(sc)
         labels.append(average_errors[j]['run_name'])
@@ -269,8 +329,9 @@ for region in regions:
     ax.set_xticklabels(xlabels,rotation='vertical')
     ax.tick_params(axis='both',which='major',labelsize=12)
     ax2 = ax.twinx()
-    dp, = ax2.plot(xv,station_depths[idx],color='silver')
-    ax2.set_ylabel('Depth (m)',fontsize=12)
+    ax2.tick_params(axis='y',which='major',labelsize=12)
+    dp, = ax2.plot(xv,station_depths[idx],color='grey')
+    ax2.set_ylabel('Depth (m)',fontsize=14)
     
     if metric == 'r2':
       ylabel = 'r-squared'
@@ -288,9 +349,9 @@ for region in regions:
       ylabel = 'relative bias (m)'
     if metric == 'skill':
       ylabel='model skill'
-    ax.set_ylabel(ylabel,fontsize=12)
-    ax.set_xlabel('Station ID',fontsize=12)
-  ax.set_title('(b)',loc='center',fontsize=18)
+    ax.set_ylabel(ylabel,fontsize=14)
+    ax.set_xlabel('Station ID',fontsize=14)
+  ax.set_title('(a)',loc='center',fontsize=18)
   plt.savefig('average_errors_'+region+'.png',bbox_inches='tight',dpi=400)
   print('  done')
   
@@ -307,7 +368,7 @@ for region in regions:
       labels[i] = '2 degree structured'
     elif labels[i].find('unst') >= 0:
       labels[i] = 'unstructured'
-  fig.legend(scatters,labels,loc='center',fontsize=12,ncol=3,fancybox=True)
+  fig.legend(scatters,labels,loc='center',fontsize=14,ncol=3,fancybox=True)
   plt.savefig('legend.png',bbox_inches='tight',dpi=400)    
   print('  done')
   
@@ -316,25 +377,7 @@ for region in regions:
   ###########################################  
   
   print('concatenating figures')
-  subprocess.call('convert -append average_errors_'+region+'.png station_locations_'+region+'.png legend.png out.png',shell=True)
-  subprocess.call('convert +append joyplot_errors_'+region+'.png out.png '+region+'.png',shell=True)
+  subprocess.call('convert -append average_errors_'+region+'.png  legend.png station_locations_'+region+'.png out.png',shell=True)
+  subprocess.call('convert +append out.png joyplot_errors_'+region+'.png out.png',shell=True)
+  subprocess.call('convert +append out.png joyplot_errors_rel'+region+'.png  '+region+'.png',shell=True)
   print('  done')
-
-
-#df = pd.DataFrame.from_dict(errors_abs)
-#plt.figure(figsize=fsize)
-#fig, axes = joypy.joyplot(df, column=columns,by='station',kind='normalized_counts',bins=30,alpha=opac, figsize=fsize, x_range=[0,2], labels=errors_abs_label, legend=False)
-#plt.title('Absolute errors')
-#plt.savefig('joyplot_errors_abs.png',bbox_inches='tight',dpi=400)    
-#
-#df = pd.DataFrame.from_dict(errors_rel)
-#plt.figure(figsize=fsize)
-#fig, axes = joypy.joyplot(df, column=columns,by='station',kind='normalized_counts',bins=30,alpha=opac, figsize=fsize, x_range=[-200,200],labels=errors_rel_label, legend=False)
-#plt.title('Relative errors')
-#plt.savefig('joyplot_errors_rel.png',bbox_inches='tight',dpi=400)    
-#
-#df = pd.DataFrame.from_dict(errors_absrel)
-#plt.figure(figsize=fsize)
-#fig, axes = joypy.joyplot(df, column=columns,by='station',kind='normalized_counts',bins=30,alpha=opac, figsize=fsize, x_range=[0,200],labels=errors_absrel_label, legend=False)
-#plt.title('Absolute relative errors')
-#plt.savefig('joyplot_errors_absrel.png',bbox_inches='tight',dpi=400)    
