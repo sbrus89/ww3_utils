@@ -19,13 +19,20 @@ import glob
 import os
 import shutil # file operations
 
-os.chdir('/Users/arbetter/Desktop/python/cesm_maps/RemappingFiles/')
-os.getcwd()
+#os.chdir('/Users/arbetter/Desktop/python/cesm_maps/RemappingFiles/')
+#os.getcwd()
 
 
-cesm_remap_blin_file = ['map_gx1v6_TO_ww3a_blin.150511.nc','map_ww3a_TO_gx1v6_blin.150511.nc']
-cesm_remap_stod_file = ['map_gx1v6_TO_ww3a_neareststod.150511.nc','map_ww3a_TO_gx1v6_neareststod.150511.nc']
-cesm_remap_splice_file = ['map_gx1v6_TO_ww3a_splice.nc','map_ww3a_TO_gx1v6_splice.nc']
+cesm_remap_blin_file = ['map_oEC60to30v3_TO_wQU50_blin.20210125.nc','map_wQU50_TO_oEC60to30v3_blin.20210125.nc']
+cesm_remap_stod_file = ['map_oEC60to30v3_TO_wQU50_nstod.20210125.nc','map_wQU50_TO_oEC60to30v3_nstod.20210125.nc']
+cesm_remap_splice_file = ['map_oEC60to30v3_TO_wQU50_splice.20210125.nc','map_wQU50_TO_oEC60to30v3_splice.20210125.nc']
+#cesm_remap_blin_file = ['map_T62_TO_wQU50_blin.20210125.nc','map_wQU50_TO_T62_blin.20210125.nc']
+#cesm_remap_stod_file = ['map_T62_TO_wQU50_nstod.20210125.nc','map_wQU50_TO_T62_nstod.20210125.nc']
+#cesm_remap_splice_file = ['map_T62_TO_wQU50_splice.20210125.nc','map_wQU50_TO_T62_splice.20210125.nc']
+
+#cesm_remap_blin_file = ['map_gx1v6_TO_ww3a_blin.150511.nc','map_ww3a_TO_gx1v6_blin.150511.nc']
+#cesm_remap_stod_file = ['map_gx1v6_TO_ww3a_neareststod.150511.nc','map_ww3a_TO_gx1v6_neareststod.150511.nc']
+#cesm_remap_splice_file = ['map_gx1v6_TO_ww3a_splice.nc','map_ww3a_TO_gx1v6_splice.nc']
 
 #cesm_remap_blin_file = ['map_gx1v6_TO_ww3a_blin.150430.nc']
 #cesm_remap_stod_file = ['map_gx1v6_TO_ww3a_neareststod.150430.nc']
@@ -46,8 +53,8 @@ else:
     cleanup = True
 
 
-print '#files =',nfiles
-print 'cleanup =',cleanup
+print('#files =',nfiles)
+print('cleanup =',cleanup)
 
 
 for k in range(0,nfiles):
@@ -55,16 +62,17 @@ for k in range(0,nfiles):
 ### begin load blin block
 
 #for k in range(0,-1):
-    print k, cesm_remap_blin_file[k]
+    print(k, cesm_remap_blin_file[k])
 
 # get the infrom from grid map
     blingroup = netCDF4.Dataset(cesm_remap_blin_file[k],'r')
-    print blingroup.data_model
+    print(blingroup.data_model)
 
 # Source variables for blin
     blin_src_griddims = blingroup.variables['src_grid_dims'][:]
     nx_src = blin_src_griddims[0]
-    ny_src = blin_src_griddims[1]
+    if len(blin_src_griddims) > 1:
+      ny_src = blin_src_griddims[1]
     blin_src_mask = blingroup.variables['mask_a'][:]
     blin_src_lon = blingroup.variables['xc_a'][:]
     blin_src_lat = blingroup.variables['yc_a'][:]
@@ -73,7 +81,8 @@ for k in range(0,nfiles):
 
     blin_dst_griddims = blingroup.variables['dst_grid_dims'][:]
     nx_dst = blin_dst_griddims[0]
-    ny_dst = blin_dst_griddims[1]
+    if len(blin_dst_griddims) > 1:
+      ny_dst = blin_dst_griddims[1]
     blin_dst_mask = blingroup.variables['mask_b'][:]
     blin_dst_lon  = blingroup.variables['xc_b'][:]
     blin_dst_lat = blingroup.variables['yc_b'][:]
@@ -92,24 +101,23 @@ for k in range(0,nfiles):
     blingroup.close()
 
 
-    if ('map_gx' in cesm_remap_blin_file[k]):  # gx3v7 in radians
-        print 'gxin radians'
+    if ('map_o' in cesm_remap_blin_file[k]):  # gx3v7 in radians
         radlat = 180.*blin_src_lat[:]/math.pi
         blin_src_lat = radlat
         radlon = 180*blin_src_lon[:]/math.pi
         blin_src_lon = radlon
 
-    if ('TO_gx' in cesm_remap_blin_file[k]):  # gx3v7 in radians
-        print 'gx in radians'
+    if ('TO_o' in cesm_remap_blin_file[k]):  # gx3v7 in radians
         radlat = 180.*blin_dst_lat[:]/math.pi
         blin_dst_lat = radlat
         radlon = 180*blin_dst_lon[:]/math.pi
         blin_dst_lon = radlon
 
-    print cesm_remap_blin_file[k]
-    print 'blin_src_grid_dims', blin_src_griddims, src_n_blin
-    print 'blin_dst_grid_dims', blin_dst_griddims, dst_n_blin
-    print '#points used:', s_n_blin
+
+    print(cesm_remap_blin_file[k])
+    print('blin_src_grid_dims', blin_src_griddims, src_n_blin)
+    print('blin_dst_grid_dims', blin_dst_griddims, dst_n_blin)
+    print('#points used:', s_n_blin)
 
 # col is the source grid
     blin_col_lon = blin_src_lon[s_col_blin[:]]
@@ -126,16 +134,17 @@ for k in range(0,nfiles):
 
 
 #for k in range(0,-1):
-    print k, cesm_remap_stod_file[k]
+    print(k, cesm_remap_stod_file[k])
 
 # get the infrom from grid map
     stodgroup = netCDF4.Dataset(cesm_remap_stod_file[k],'r')
-    print stodgroup.data_model
+    print(stodgroup.data_model)
 
 # Source variables for stod
     stod_src_griddims = stodgroup.variables['src_grid_dims'][:]
     nx_src = stod_src_griddims[0]
-    ny_src = stod_src_griddims[1]
+    if len(stod_src_griddims) > 1:
+      ny_src = stod_src_griddims[1]
     stod_src_mask = stodgroup.variables['mask_a'][:]
     stod_src_lon = stodgroup.variables['xc_a'][:]
     stod_src_lat = stodgroup.variables['yc_a'][:]
@@ -144,7 +153,8 @@ for k in range(0,nfiles):
 
     stod_dst_griddims = stodgroup.variables['dst_grid_dims'][:]
     nx_dst = stod_dst_griddims[0]
-    ny_dst = stod_dst_griddims[1]
+    if len(stod_dst_griddims) > 1:
+      ny_dst = stod_dst_griddims[1]
     stod_dst_mask = stodgroup.variables['mask_b'][:]
     stod_dst_lon  = stodgroup.variables['xc_b'][:]
     stod_dst_lat = stodgroup.variables['yc_b'][:]
@@ -163,25 +173,23 @@ for k in range(0,nfiles):
     stodgroup.close()
 
 
-    if ('map_gx' in cesm_remap_stod_file[k]):  # gx3v7 in radians
-        print 'gx in radians'
+    if ('map_o' in cesm_remap_stod_file[k]):  # gx3v7 in radians
         radlat = 180.*stod_src_lat[:]/math.pi
         stod_src_lat = radlat
         radlon = 180*stod_src_lon[:]/math.pi
         stod_src_lon = radlon
 
-    if ('TO_gx' in cesm_remap_stod_file[k]):  # gx3v7 in radians
-        print 'gxin radians'
+    if ('TO_o' in cesm_remap_stod_file[k]):  # gx3v7 in radians
         radlat = 180.*stod_dst_lat[:]/math.pi
         stod_dst_lat = radlat
         radlon = 180*stod_dst_lon[:]/math.pi
         stod_dst_lon = radlon
 
 
-    print cesm_remap_stod_file[k]
-    print 'stod_src_grid_dims', stod_src_griddims, src_n_stod
-    print 'stod_dst_grid_dims', stod_dst_griddims, dst_n_stod
-    print '#points used:', s_n_stod
+    print(cesm_remap_stod_file[k])
+    print('stod_src_grid_dims', stod_src_griddims, src_n_stod)
+    print('stod_dst_grid_dims', stod_dst_griddims, dst_n_stod)
+    print('#points used:', s_n_stod)
 
 # col is the source grid
     stod_col_lon = stod_src_lon[s_col_stod[:]]
@@ -267,13 +275,15 @@ for k in range(0,nfiles):
     blin_src_lonunusedland = blin_src_lon[blin_src_unused[:]]*(1-blin_src_mask[blin_src_unused[:]])
     blin_src_latunusedland = blin_src_lat[blin_src_unused[:]]*(1-blin_src_mask[blin_src_unused[:]])
 
-
+    print(blin_src_lonland.shape,blin_src_latland.shape)
     blin_src_x, blin_src_y = blinmap(blin_src_lon,blin_src_lat)
     blin_dst_x, blin_dst_y = blinmap(blin_dst_lon,blin_dst_lat)
     blin_src_xocn, blin_src_yocn = blinmap(blin_src_lonocn,blin_src_latocn)
     blin_dst_xocn, blin_dst_yocn = blinmap(blin_dst_lonocn,blin_dst_latocn)
-    blin_src_xland, blin_src_yland = blinmap(blin_src_lonland,blin_src_latland)
-    blin_dst_xland, blin_dst_yland = blinmap(blin_dst_lonland,blin_dst_latland)
+    if blin_src_lonland.size > 0 and blin_src_latlon.size > 0:
+      blin_src_xland, blin_src_yland = blinmap(blin_src_lonland,blin_src_latland)
+    if blin_dst_lonland.size > 0 and blin_dst_latlon.size > 0:
+      blin_dst_xland, blin_dst_yland = blinmap(blin_dst_lonland,blin_dst_latland)
     blin_col_x, blin_col_y = blinmap(blin_col_lon,blin_col_lat)
     blin_row_x, blin_row_y = blinmap(blin_row_lon,blin_row_lat)
     blin_col_xocn, blin_col_yocn = blinmap(blin_col_lonocn,blin_col_latocn)
@@ -281,12 +291,14 @@ for k in range(0,nfiles):
     blin_col_xland,blin_col_yland = blinmap(blin_col_lonland,blin_col_latland)
     blin_row_xland,blin_row_yland = blinmap(blin_row_lonland,blin_row_latland)
     blin_src_xunused,blin_src_yunused = blinmap(blin_src_lonunused,blin_src_latunused)
-    blin_dst_xuncalc,blin_dst_yuncalc = blinmap(blin_dst_lonuncalc,blin_dst_latuncalc)
+    if blin_dst_lonuncalc.size > 0 and blin_dst_latuncalc.size > 0:
+      blin_dst_xuncalc,blin_dst_yuncalc = blinmap(blin_dst_lonuncalc,blin_dst_latuncalc)
     blin_src_xunusedland,blin_src_yunusedland = blinmap(blin_src_lonunusedland,blin_src_latunusedland)
-    blin_dst_xuncalcland,blin_dst_yuncalcland = blinmap(blin_dst_lonuncalcland,blin_dst_latuncalcland)
+    if blin_dst_lonuncalcland.size > 0 and blin_dst_latuncalcland.size > 0 :
+      blin_dst_xuncalcland,blin_dst_yuncalcland = blinmap(blin_dst_lonuncalcland,blin_dst_latuncalcland)
 
 
-    print 'read stod & blin'
+    print('read stod & blin')
 
 # here want to mark the points that are being used to create
 #    blin_col_field = list()
@@ -298,11 +310,11 @@ for k in range(0,nfiles):
 
 # and a subplot for src
     srcmap = plt.subplot2grid((2,3),(0,0))
-
     blinmap.drawcoastlines()
 
 # scatter markers
-    blinmap.scatter(blin_src_xland,blin_src_yland,5,color='red',marker='+')
+    if blin_src_lonland.size > 0 and blin_src_latlon.size > 0:
+      blinmap.scatter(blin_src_xland,blin_src_yland,5,color='red',marker='+')
     blinmap.scatter(blin_src_xocn,blin_src_yocn,3,color='blue')
 
 #    plt.title(cesm_remap_file[i])
@@ -310,6 +322,7 @@ for k in range(0,nfiles):
 
 # subplot for points used in interp
     srcfig = plt.subplot2grid((2,3),(0,1))
+    blinmap.drawcoastlines()
     blinmap.scatter(blin_col_xland,blin_col_yland,color='red',marker='+')
     blinmap.scatter(blin_col_xocn,blin_col_yocn,3,color='blue')
 
@@ -318,6 +331,7 @@ for k in range(0,nfiles):
 
 # subplot for ocean points not used in interp
     unusedfig = plt.subplot2grid((2,3),(0,2))
+    blinmap.drawcoastlines()
     blinmap.scatter(blin_src_xunusedland,blin_src_yunusedland,5,color='red',marker='+')
     blinmap.scatter(blin_src_xunused,blin_src_yunused,3,color='blue')
 
@@ -326,14 +340,17 @@ for k in range(0,nfiles):
 # subplot for ocean points not calculated
 
     uncalcfig = plt.subplot2grid((2,3),(1,2))
-    blinmap.scatter(blin_dst_xuncalcland,blin_dst_yuncalcland,5,color='red',marker='+')
-    blinmap.scatter(blin_dst_xuncalc,blin_dst_yuncalc,3,color='blue')
+    blinmap.drawcoastlines()
+    if blin_dst_lonuncalcland.size > 0 and blin_dst_latuncalcland.size > 0 :
+      blinmap.scatter(blin_dst_xuncalcland,blin_dst_yuncalcland,5,color='red',marker='+')
+    if blin_dst_lonuncalc.size > 0 and blin_dst_latuncalc.size > 0:
+      blinmap.scatter(blin_dst_xuncalc,blin_dst_yuncalc,3,color='blue')
 
     plt.title('DST UNCALC')
 
 # subplot for points calculated in interp
     dstfig=plt.subplot2grid((2,3),(1,1))
-#    blinmap.drawcoastlines()
+    blinmap.drawcoastlines()
 
     blinmap.scatter(blin_row_xland,blin_row_yland,color='red',marker='+')
     blinmap.scatter(blin_row_xocn,blin_row_yocn,3,color='blue')
@@ -349,11 +366,11 @@ for k in range(0,nfiles):
 
 # and a subplot for dst
     dstmap = plt.subplot2grid((2,3),(1,0))
-
     blinmap.drawcoastlines()
 
 # scatter markers
-    blinmap.scatter(blin_dst_xland,blin_dst_yland,5,color='red',marker='+')
+    if blin_dst_lonland.size > 0 and blin_dst_latlon.size > 0:
+      blinmap.scatter(blin_dst_xland,blin_dst_yland,5,color='red',marker='+')
     blinmap.scatter(blin_dst_xocn,blin_dst_yocn,3,color='blue')
 
     plt.title('DST GRID')
@@ -450,8 +467,10 @@ for k in range(0,nfiles):
     stod_dst_x, stod_dst_y = stodmap(stod_dst_lon,stod_dst_lat)
     stod_src_xocn, stod_src_yocn = stodmap(stod_src_lonocn,stod_src_latocn)
     stod_dst_xocn, stod_dst_yocn = stodmap(stod_dst_lonocn,stod_dst_latocn)
-    stod_src_xland, stod_src_yland = stodmap(stod_src_lonland,stod_src_latland)
-    stod_dst_xland, stod_dst_yland = stodmap(stod_dst_lonland,stod_dst_latland)
+    if stod_src_lonland.size > 0 and stod_src_latland > 0:
+      stod_src_xland, stod_src_yland = stodmap(stod_src_lonland,stod_src_latland)
+    if stod_dst_lonland.size > 0 and stod_dst_latland > 0:
+      stod_dst_xland, stod_dst_yland = stodmap(stod_dst_lonland,stod_dst_latland)
     stod_col_x, stod_col_y = stodmap(stod_col_lon,stod_col_lat)
     stod_row_x, stod_row_y = stodmap(stod_row_lon,stod_row_lat)
     stod_col_xocn, stod_col_yocn = stodmap(stod_col_lonocn,stod_col_latocn)
@@ -459,12 +478,14 @@ for k in range(0,nfiles):
     stod_col_xland,stod_col_yland = stodmap(stod_col_lonland,stod_col_latland)
     stod_row_xland,stod_row_yland = stodmap(stod_row_lonland,stod_row_latland)
     stod_src_xunused,stod_src_yunused = stodmap(stod_src_lonunused,stod_src_latunused)
-    stod_dst_xuncalc,stod_dst_yuncalc = stodmap(stod_dst_lonuncalc,stod_dst_latuncalc)
+    if stod_dst_lonuncalc.size > 0 and stod_dst_latuncalc > 0:
+      stod_dst_xuncalc,stod_dst_yuncalc = stodmap(stod_dst_lonuncalc,stod_dst_latuncalc)
     stod_src_xunusedland,stod_src_yunusedland = stodmap(stod_src_lonunusedland,stod_src_latunusedland)
-    stod_dst_xuncalcland,stod_dst_yuncalcland = stodmap(stod_dst_lonuncalcland,stod_dst_latuncalcland)
+    if stod_dst_lonuncalcland.size > 0 and stod_dst_latuncalcland.size > 0:
+      stod_dst_xuncalcland,stod_dst_yuncalcland = stodmap(stod_dst_lonuncalcland,stod_dst_latuncalcland)
 
 
-    print 'here'
+    print('here')
 
 # here want to mark the points that are being used to create
 #    stod_col_field = list()
@@ -476,11 +497,11 @@ for k in range(0,nfiles):
 
 # and a subplot for src
     srcmap = plt.subplot2grid((2,3),(0,0))
-
     stodmap.drawcoastlines()
 
 # scatter markers
-    stodmap.scatter(stod_src_xland,stod_src_yland,5,color='red',marker='+')
+    if stod_src_lonland.size > 0 and stod_src_latland > 0:
+      stodmap.scatter(stod_src_xland,stod_src_yland,5,color='red',marker='+')
     stodmap.scatter(stod_src_xocn,stod_src_yocn,3,color='blue')
 
 #    plt.title(cesm_remap_file[i])
@@ -488,6 +509,7 @@ for k in range(0,nfiles):
 
 # subplot for points used in interp
     srcfig = plt.subplot2grid((2,3),(0,1))
+    stodmap.drawcoastlines()
     stodmap.scatter(stod_col_xland,stod_col_yland,color='red',marker='+')
     stodmap.scatter(stod_col_xocn,stod_col_yocn,3,color='blue')
 
@@ -496,6 +518,7 @@ for k in range(0,nfiles):
 
 # subplot for ocean points not used in interp
     unusedfig = plt.subplot2grid((2,3),(0,2))
+    stodmap.drawcoastlines()
     stodmap.scatter(stod_src_xunusedland,stod_src_yunusedland,5,color='red',marker='+')
     stodmap.scatter(stod_src_xunused,stod_src_yunused,3,color='blue')
 
@@ -504,14 +527,17 @@ for k in range(0,nfiles):
 # subplot for ocean points not calculated
 
     uncalcfig = plt.subplot2grid((2,3),(1,2))
-    stodmap.scatter(stod_dst_xuncalcland,stod_dst_yuncalcland,5,color='red',marker='+')
-    stodmap.scatter(stod_dst_xuncalc,stod_dst_yuncalc,3,color='blue')
+    stodmap.drawcoastlines()
+    if stod_dst_lonuncalcland.size > 0 and stod_dst_latuncalcland.size > 0:
+      stodmap.scatter(stod_dst_xuncalcland,stod_dst_yuncalcland,5,color='red',marker='+')
+    if stod_dst_lonuncalc.size > 0 and stod_dst_latuncalc > 0:
+      stodmap.scatter(stod_dst_xuncalc,stod_dst_yuncalc,3,color='blue')
 
     plt.title('DST UNCALC')
 
 # subplot for points calculated in interp
     dstfig=plt.subplot2grid((2,3),(1,1))
-#    stodmap.drawcoastlines()
+    stodmap.drawcoastlines()
 
     stodmap.scatter(stod_row_xland,stod_row_yland,color='red',marker='+')
     stodmap.scatter(stod_row_xocn,stod_row_yocn,3,color='blue')
@@ -527,11 +553,11 @@ for k in range(0,nfiles):
 
 # and a subplot for dst
     dstmap = plt.subplot2grid((2,3),(1,0))
-
     stodmap.drawcoastlines()
 
 # scatter markers
-    stodmap.scatter(stod_dst_xland,stod_dst_yland,5,color='red',marker='+')
+    if stod_dst_lonland.size > 0 and stod_dst_latland > 0:
+      stodmap.scatter(stod_dst_xland,stod_dst_yland,5,color='red',marker='+')
     stodmap.scatter(stod_dst_xocn,stod_dst_yocn,3,color='blue')
 
     plt.title('DST GRID')
@@ -567,7 +593,7 @@ for k in range(0,nfiles):
     for ii in s_row_xtra:
         for j in range(len(s_row_stod)):
             if (ii == s_row_stod[j]):
-                print 'Appending: ', ii, j, len(s_row_xtra), len(s_row_stod)
+                print('Appending: ', ii, j, len(s_row_xtra), len(s_row_stod))
                 xtra_row_list.append(j)
 
     xtra_index = np.asarray(xtra_row_list)
@@ -609,23 +635,26 @@ for k in range(0,nfiles):
     xtramap = Basemap(llcrnrlon=0,llcrnrlat=-90,urcrnrlon=360,urcrnrlat=90,projection='mill')
 
     xtra_dst_xocn, xtra_dst_yocn = xtramap(xtra_dst_lonocn,xtra_dst_latocn)
-    xtra_dst_xland, xtra_dst_yland = xtramap(xtra_dst_lonland,xtra_dst_latland)
+    if xtra_dst_lonland.size > 0 and xtra_dst_latland > 0: 
+      xtra_dst_xland, xtra_dst_yland = xtramap(xtra_dst_lonland,xtra_dst_latland)
 
     xtra_src_xocn, xtra_src_yocn = xtramap(xtra_src_lonocn,xtra_src_latocn)
-    xtra_src_xland, xtra_src_yland = xtramap(xtra_src_lonland,xtra_src_latland)
+    if xtra_src_lonland.size > 0 and xtra_src_latland > 0: 
+      xtra_src_xland, xtra_src_yland = xtramap(xtra_src_lonland,xtra_src_latland)
 
     # subplot for points used in interp
     srcfig = plt.subplot2grid((2,3),(0,2))
+    xtramap.drawcoastlines()
 #    xtramap.scatter(xtra_not_x,xtra_not_y,3,color='purple')
-    xtramap.scatter(xtra_dst_xland,xtra_dst_yland,color='red',marker='+')
+    if xtra_dst_lonland.size > 0 and xtra_dst_latland > 0:
+      xtramap.scatter(xtra_dst_xland,xtra_dst_yland,color='red',marker='+')
     xtramap.scatter(xtra_dst_xocn,xtra_dst_yocn,3,color='blue')
 
-    xtramap.drawcoastlines()
     plt.title('xtra DST OUT')
 
 # subplot for points calculated in interp
     dstfig=plt.subplot2grid((2,3),(0,1))
-#    stodmap.drawcoastlines()
+    stodmap.drawcoastlines()
 
     stodmap.scatter(stod_row_xland,stod_row_yland,color='red',marker='+')
     stodmap.scatter(stod_row_xocn,stod_row_yocn,3,color='blue')
@@ -634,7 +663,7 @@ for k in range(0,nfiles):
 
     # subplot for points calculated in interp
     dstfig=plt.subplot2grid((2,3),(0,0))
-#    blinmap.drawcoastlines()
+    blinmap.drawcoastlines()
 
     blinmap.scatter(blin_row_xland,blin_row_yland,color='red',marker='+')
     blinmap.scatter(blin_row_xocn,blin_row_yocn,3,color='blue')
@@ -643,8 +672,10 @@ for k in range(0,nfiles):
 
         # subplot for points used in interp
     srcfig = plt.subplot2grid((2,3),(1,2))
+    xtramap.drawcoastlines()
 #    xtramap.scatter(xtra_not_x,xtra_not_y,3,color='purple')
-    xtramap.scatter(xtra_src_xland,xtra_src_yland,color='red',marker='+')
+    if  xtra_src_lonland.size > 0 and xtra_src_latland > 0:
+      xtramap.scatter(xtra_src_xland,xtra_src_yland,color='red',marker='+')
     xtramap.scatter(xtra_src_xocn,xtra_src_yocn,3,color='blue')
 
     xtramap.drawcoastlines()
@@ -652,6 +683,7 @@ for k in range(0,nfiles):
 
 # subplot for points used in interp
     srcfig = plt.subplot2grid((2,3),(1,1))
+    stodmap.drawcoastlines()
     stodmap.scatter(stod_col_xland,stod_col_yland,color='red',marker='+')
     stodmap.scatter(stod_col_xocn,stod_col_yocn,3,color='blue')
 
@@ -659,6 +691,7 @@ for k in range(0,nfiles):
     plt.title('STOD SRC IN')
 
     srcfig = plt.subplot2grid((2,3),(1,0))
+    blinmap.drawcoastlines()
     blinmap.scatter(blin_col_xland,blin_col_yland,color='red',marker='+')
     blinmap.scatter(blin_col_xocn,blin_col_yocn,3,color='blue')
 
@@ -669,7 +702,7 @@ for k in range(0,nfiles):
     if showplots == 1:
         plt.show()
 
-    plt.savefig(cesm_remap_blin_file[k]+'.png')
+    plt.savefig(cesm_remap_blin_file[k]+'_2.png')
 
     if showplots == 0:
         plt.close()
@@ -697,62 +730,62 @@ for k in range(0,nfiles):
 # To copy the global attributes of the netCDF file
 # get the infrom from grid map
     blingroup = netCDF4.Dataset(cesm_remap_blin_file[k],'r')
-    print blingroup.data_model
+    print(blingroup.data_model)
 
     # create the new spicegroup model
     splicegroup = netCDF4.Dataset(cesm_remap_splice_file[k],'w')
-    print splicegroup.data_model
+    print(splicegroup.data_model)
 
-    print 'Attributes'
+    print('Attributes')
     for attname in blingroup.ncattrs():
-        print attname
+        print(attname)
         setattr(splicegroup,attname,getattr(blingroup,attname))
 
 
 # To copy the dimension of the netCDF file
-    print 'Dimensions'
-    for dimname,dim in blingroup.dimensions.iteritems():
+    print('Dimensions')
+    for dimname,dim in blingroup.dimensions.items():
 
 # if you want to make changes in the dimensions of the new file
 # you should add your own conditions here before the creation of the dimension.
-#   print dimname, dim
+#   print(dimname, dim)
         if (dimname == 'n_s'):
-            print 'change n_s: old',dim, dimname, len(dim)
+            print('change n_s: old',dim, dimname, len(dim))
             dim = splicegroup.createDimension(dimname,size=s_n_splice)
-            print 'change n_s: new',dim, dimname, len(dim)
+            print('change n_s: new',dim, dimname, len(dim))
         else:
             splicegroup.createDimension(dimname,len(dim))
 
 
 
-    print 'Variables'
-    for varname,ncvar in blingroup.variables.iteritems():
-        print varname, ncvar
-        print 'Type:',ncvar, type(ncvar)
+    print('Variables')
+    for varname,ncvar in blingroup.variables.items():
+        print(varname, ncvar)
+        print('Type:',ncvar, type(ncvar))
 # if you want to make changes in the variables of the new file
 # you should add your own conditions here before the creation of the variable.
         if (varname == 'row'):
-            print 'Change row here', varname, ncvar
+            print('Change row here', varname, ncvar)
             var = splicegroup.createVariable(varname,ncvar.dtype,dimensions=([u'n_s',]),fill_value=False)
 #Proceed to copy the variable attributes
             for attname in ncvar.ncattrs():
                 setattr(var,attname,getattr(ncvar,attname))
-                print 'Attribute: ', attname
+                print('Attribute: ', attname)
             var[:] = s_row_splice[:]+1
         elif (varname == 'col'):
             var = splicegroup.createVariable(varname,ncvar.dtype,dimensions=([u'n_s',]),fill_value=False)
-            print 'Change col here', ncvar
+            print('Change col here', ncvar)
 #Proceed to copy the variable attributes
             for attname in ncvar.ncattrs():
                 setattr(var,attname,getattr(ncvar,attname))
-                print 'Attribute: ', attname
+                print('Attribute: ', attname)
             var[:] = s_col_splice[:]+1
         elif (varname == 'S'):
-            print 'Change S here',ncvar
+            print('Change S here',ncvar)
 #Proceed to copy the variable attributes
             for attname in ncvar.ncattrs():
                 setattr(var,attname,getattr(ncvar,attname))
-                print 'Attribute: ', attname
+                print('Attribute: ', attname)
             var = splicegroup.createVariable(varname,ncvar.dtype,dimensions=([u'n_s',]),fill_value=False)
             var[:] = S_weight_splice
         else:
@@ -760,9 +793,9 @@ for k in range(0,nfiles):
 #Proceed to copy the variable attributes
             for attname in ncvar.ncattrs():
                 setattr(var,attname,getattr(ncvar,attname))
-                print 'Attribute: ', attname
+                print('Attribute: ', attname)
 #Finally copy the variable data to the new created variable
-            print 'filling var with...', var, ncvar
+            print('filling var with...', var, ncvar)
             var[:] = ncvar[:]
 
     blingroup.close()
@@ -771,12 +804,13 @@ for k in range(0,nfiles):
 
     # create the new spicegroup model
     splicegroup = netCDF4.Dataset(cesm_remap_splice_file[k],'r')
-    print splicegroup.data_model
+    print(splicegroup.data_model)
 
 # Source variables for splice ... unchanged
     splice_src_griddims = splicegroup.variables['src_grid_dims'][:]
     nx_src = splice_src_griddims[0]
-    ny_src = splice_src_griddims[1]
+    if len(splice_src_griddims) > 1:
+      ny_src = splice_src_griddims[1]
     splice_src_mask = splicegroup.variables['mask_a'][:]
     splice_src_lon = splicegroup.variables['xc_a'][:]
     splice_src_lat = splicegroup.variables['yc_a'][:]
@@ -785,7 +819,8 @@ for k in range(0,nfiles):
 
     splice_dst_griddims = splicegroup.variables['dst_grid_dims'][:]
     nx_dst = splice_dst_griddims[0]
-    ny_dst = splice_dst_griddims[1]
+    if len(splice_dst_griddims) > 1:
+      ny_dst = splice_dst_griddims[1]
     splice_dst_mask = splicegroup.variables['mask_b'][:]
     splice_dst_lon  = splicegroup.variables['xc_b'][:]
     splice_dst_lat = splicegroup.variables['yc_b'][:]
@@ -806,25 +841,25 @@ for k in range(0,nfiles):
     splicegroup.close()
 
 
-    if ('map_gx' in cesm_remap_splice_file[k]):  # gx3v7 in radians
-        print 'gx in radians'
+    if ('map_o' in cesm_remap_splice_file[k]):  # gx3v7 in radians
+        print('ocean in radians')
         radlat = 180.*splice_src_lat[:]/math.pi
         splice_src_lat = radlat
         radlon = 180*splice_src_lon[:]/math.pi
         splice_src_lon = radlon
 
-    if ('TO_gx' in cesm_remap_splice_file[k]):  # gx3v7 in radians
-        print 'gx in radians'
+    if ('TO_o' in cesm_remap_splice_file[k]):  # gx3v7 in radians
+        print('ocean in radians')
         radlat = 180.*splice_dst_lat[:]/math.pi
         splice_dst_lat = radlat
         radlon = 180*splice_dst_lon[:]/math.pi
         splice_dst_lon = radlon
 
 
-    print cesm_remap_stod_file[k]
-    print 'stod_src_grid_dims', splice_src_griddims, src_n_splice
-    print 'stod_dst_grid_dims', splice_dst_griddims, dst_n_splice
-    print '#points used:', s_n_splice
+    print(cesm_remap_stod_file[k])
+    print('stod_src_grid_dims', splice_src_griddims, src_n_splice)
+    print('stod_dst_grid_dims', splice_dst_griddims, dst_n_splice)
+    print('#points used:', s_n_splice)
 
 # col is the source grid
     splice_col_lon = splice_src_lon[s_col_splice[:]]
@@ -915,21 +950,24 @@ for k in range(0,nfiles):
     splice_dst_x, splice_dst_y = splicemap(splice_dst_lon,splice_dst_lat)
     splice_src_xocn, splice_src_yocn = splicemap(splice_src_lonocn,splice_src_latocn)
     splice_dst_xocn, splice_dst_yocn = splicemap(splice_dst_lonocn,splice_dst_latocn)
-    splice_src_xland, splice_src_yland = splicemap(splice_src_lonland,splice_src_latland)
-    splice_dst_xland, splice_dst_yland = splicemap(splice_dst_lonland,splice_dst_latland)
+    if splice_src_lonland.size > 0 and splice_src_latland.size > 0: 
+      splice_src_xland, splice_src_yland = splicemap(splice_src_lonland,splice_src_latland)
+    if splice_dst_lonland.size > 0 and splice_dst_latland.size > 0:
+      splice_dst_xland, splice_dst_yland = splicemap(splice_dst_lonland,splice_dst_latland)
     splice_col_x, splice_col_y = splicemap(splice_col_lon,splice_col_lat)
     splice_row_x, splice_row_y = splicemap(splice_row_lon,splice_row_lat)
     splice_col_xocn, splice_col_yocn = splicemap(splice_col_lonocn,splice_col_latocn)
     splice_row_xocn, splice_row_yocn = splicemap(splice_row_lonocn,splice_row_latocn)
-    splice_col_xland,splice_col_yland = splicemap(splice_col_lonland,splice_col_latland)
-    splice_row_xland,splice_row_yland = splicemap(splice_row_lonland,splice_row_latland)
-    splice_src_xunused,splice_src_yunused = splicemap(splice_src_lonunused,splice_src_latunused)
-    splice_dst_xuncalc,splice_dst_yuncalc = splicemap(splice_dst_lonuncalc,splice_dst_latuncalc)
-    splice_src_xunusedland,splice_src_yunusedland = splicemap(splice_src_lonunusedland,splice_src_latunusedland)
-    splice_dst_xuncalcland,splice_dst_yuncalcland = splicemap(splice_dst_lonuncalcland,splice_dst_latuncalcland)
+    splice_col_xland, splice_col_yland = splicemap(splice_col_lonland,splice_col_latland)
+    splice_row_xland, splice_row_yland = splicemap(splice_row_lonland,splice_row_latland)
+    splice_src_xunused, splice_src_yunused = splicemap(splice_src_lonunused,splice_src_latunused)
+    if splice_dst_lonuncalc.size > 0 and splice_dst_latuncalc.size > 0:
+      splice_dst_xuncalc, splice_dst_yuncalc = splicemap(splice_dst_lonuncalc,splice_dst_latuncalc)
+    splice_src_xunusedland, splice_src_yunusedland = splicemap(splice_src_lonunusedland,splice_src_latunusedland)
+    if splice_dst_lonuncalcland.size > 0 and splice_dst_latuncalcland.size > 0:
+      splice_dst_xuncalcland, splice_dst_yuncalcland = splicemap(splice_dst_lonuncalcland,splice_dst_latuncalcland)
 
-
-    print 'splicing done'
+    print('splicing done')
 
 # here want to mark the points that are being used to create
 #    splice_col_field = list()
@@ -941,11 +979,11 @@ for k in range(0,nfiles):
 
 # and a subplot for src
     srcmap = plt.subplot2grid((2,3),(0,0))
-
     splicemap.drawcoastlines()
 
 # scatter markers
-    splicemap.scatter(splice_src_xland,splice_src_yland,5,color='red',marker='+')
+    if splice_src_lonland.size > 0 and splice_src_latland.size > 0:
+      splicemap.scatter(splice_src_xland,splice_src_yland,5,color='red',marker='+')
     splicemap.scatter(splice_src_xocn,splice_src_yocn,3,color='blue')
 
 #    plt.title(cesm_remap_file[i])
@@ -953,6 +991,7 @@ for k in range(0,nfiles):
 
 # subplot for points used in interp
     srcfig = plt.subplot2grid((2,3),(0,1))
+    splicemap.drawcoastlines()
     splicemap.scatter(splice_col_xland,splice_col_yland,color='red',marker='+')
     splicemap.scatter(splice_col_xocn,splice_col_yocn,3,color='blue')
 
@@ -961,6 +1000,7 @@ for k in range(0,nfiles):
 
 # subplot for ocean points not used in interp
     unusedfig = plt.subplot2grid((2,3),(0,2))
+    splicemap.drawcoastlines()
     splicemap.scatter(splice_src_xunusedland,splice_src_yunusedland,5,color='red',marker='+')
     splicemap.scatter(splice_src_xunused,splice_src_yunused,3,color='blue')
 
@@ -969,14 +1009,17 @@ for k in range(0,nfiles):
 # subplot for ocean points not calculated
 
     uncalcfig = plt.subplot2grid((2,3),(1,2))
-    splicemap.scatter(splice_dst_xuncalcland,splice_dst_yuncalcland,5,color='red',marker='+')
-    splicemap.scatter(splice_dst_xuncalc,splice_dst_yuncalc,3,color='blue')
+    splicemap.drawcoastlines()
+    if splice_dst_lonuncalcland.size > 0 and splice_dst_latuncalcland.size > 0:
+      splicemap.scatter(splice_dst_xuncalcland,splice_dst_yuncalcland,5,color='red',marker='+')
+    if splice_dst_lonuncalc.size > 0 and splice_dst_latuncalc.size > 0:
+      splicemap.scatter(splice_dst_xuncalc,splice_dst_yuncalc,3,color='blue')
 
     plt.title('DST UNCALC')
 
 # subplot for points calculated in interp
     dstfig=plt.subplot2grid((2,3),(1,1))
-#    splicemap.drawcoastlines()
+    splicemap.drawcoastlines()
 
     splicemap.scatter(splice_row_xland,splice_row_yland,color='red',marker='+')
     splicemap.scatter(splice_row_xocn,splice_row_yocn,3,color='blue')
@@ -992,11 +1035,11 @@ for k in range(0,nfiles):
 
 # and a subplot for dst
     dstmap = plt.subplot2grid((2,3),(1,0))
-
     splicemap.drawcoastlines()
 
 # scatter markers
-    splicemap.scatter(splice_dst_xland,splice_dst_yland,5,color='red',marker='+')
+    if splice_dst_lonland.size > 0 and splice_dst_latland.size > 0:
+      splicemap.scatter(splice_dst_xland,splice_dst_yland,5,color='red',marker='+')
     splicemap.scatter(splice_dst_xocn,splice_dst_yocn,3,color='blue')
 
     plt.title('DST GRID')
