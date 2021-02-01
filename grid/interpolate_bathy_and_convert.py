@@ -2,6 +2,11 @@ import fort14
 import interpolate_bathymetry
 import jigsawpy
 import numpy as np
+import yaml
+import os
+
+########################################################################
+########################################################################
 
 def interpolate_bathy(input_file,output_file):
   mesh = fort14.fort14(input_file,verbose=True)
@@ -9,7 +14,10 @@ def interpolate_bathy(input_file,output_file):
   mesh.depth = interpolate_bathymetry.interpolate_global(mesh.xy[:,0], mesh.xy[:,1], filename='etopo1.nc', ele_var='z')
   mesh.write_grid(output_file)
 
-def project_to_sphere(input_file,output_file):
+########################################################################
+########################################################################
+
+def write_to_vtk(input_file,output_file):
   mesh = fort14.fort14(input_file,verbose=True)
   mesh.read_grid()
   
@@ -68,6 +76,9 @@ def project_to_sphere(input_file,output_file):
     f.write(str(mesh.xy[i,1])+'\n')
   f.close()
  
+########################################################################
+########################################################################
+
 def write_to_gmsh(input_file,output_file): 
   mesh = fort14.fort14(input_file,verbose=True)
   mesh.read_grid()
@@ -79,36 +90,19 @@ def write_to_gmsh(input_file,output_file):
   #x[x<0] = x[x<0] + 360.0
   #print(mesh.xy)
   #mesh.write_gmsh(output_file+'0-360')
+
+########################################################################
+########################################################################
  
 if __name__ == '__main__':
-  #interpolate_bathy('Global_DE_2km.14','fort.14_DE_2km') 
-  #project_to_sphere('fort.14_DE_2km','sphere_DE_2km.vtk')
-  #write_to_gmsh('fort.14_DE_2km','mesh_DE_2km.msh')
 
-  #interpolate_bathy('clean.14','fort.14_50km_clean') 
-  #project_to_sphere('fort.14_50km_clean','sphere_clean.vtk')
-  #write_to_gmsh('fort.14_50km_clean','mesh_50km_clean.msh')
+  pwd = os.getcwd()
 
-  #interpolate_bathy('Global_shallow_4000.14','fort.14_shallow_4000') 
-  #project_to_sphere('fort.14_shallow_4000','sphere_shallow_4000.vtk')
-  #write_to_gmsh('fort.14_shallow_4000','mesh_shallow_4000.msh')
+  f = open(pwd+'interpolate_bathy_and_convert.config')
+  cfg = yaml.load(f)
+  pprint.pprint(cdf)
 
-  #interpolate_bathy('Global_shallow_4000_edit.14','fort.14_shallow_4000_edit') 
-  #project_to_sphere('fort.14_shallow_4000_edit','sphere_shallow_4000_edit.vtk')
-  #write_to_gmsh('fort.14_shallow_4000_edit','mesh_shallow_4000_edit.msh')
+  interpolate_bathy(cfg['fort14_in'],cfg['fort14_out']) 
+  write_to_vtk(cfg['fort14_out'],cfg['vtk_out'])
+  write_to_gmsh(cfg['fort14_out'],cfg['gmsh_out'])
 
-  #interpolate_bathy('Global_shallow_4000_edit_mv_nd.14','fort.14_shallow_4000_edit_mv_nd') 
-  #project_to_sphere('fort.14_shallow_4000_edit_mv_nd','sphere_shallow_4000_edit_mv_nd.vtk')
-  #write_to_gmsh('fort.14_shallow_4000_edit_mv_nd','mesh_shallow_4000_edit_mv_nd.msh')
-
-  interpolate_bathy('Global_shallow_4000_edit_mv_nd_add_el.14','fort.14_shallow_4000_edit_mv_nd_add_el') 
-  project_to_sphere('fort.14_shallow_4000_edit_mv_nd_add_el','sphere_shallow_4000_edit_mv_nd_add_el.vtk')
-  write_to_gmsh('fort.14_shallow_4000_edit_mv_nd_add_el','mesh_shallow_4000_edit_mv_nd_add_el.msh')
-
-  #interpolate_bathy('Global_shallow_4000_20.14','fort.14_shallow_4000_20') 
-  #project_to_sphere('fort.14_shallow_4000_20','sphere_shallow_4000_20.vtk')
-  #write_to_gmsh('fort.14_shallow_4000_20','mesh_shallow_4000_20.msh')
-
-  #interpolate_bathy('Global_half_degree.14','fort.14_half_degree') 
-  #project_to_sphere('fort.14_half_degree','sphere_half_degree.vtk')
-  #write_to_gmsh('fort.14_half_degree','mesh_half_degree.msh')
