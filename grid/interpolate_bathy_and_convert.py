@@ -4,6 +4,7 @@ import jigsawpy
 import numpy as np
 import yaml
 import os
+import pprint
 
 ########################################################################
 ########################################################################
@@ -98,9 +99,9 @@ if __name__ == '__main__':
 
   pwd = os.getcwd()
 
-  f = open(pwd+'interpolate_bathy_and_convert.config')
+  f = open(pwd+'/interpolate_bathy_and_convert.config')
   cfg = yaml.load(f)
-  pprint.pprint(cdf)
+  pprint.pprint(cfg)
 
   interpolate_bathy(cfg['fort14_in'],cfg['fort14_out']) 
   write_to_vtk(cfg['fort14_out'],cfg['vtk_out'])
