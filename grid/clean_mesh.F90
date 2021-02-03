@@ -57,7 +57,7 @@
       
       
       ! Read in .msh file
-      filename = './Global_50km.14'
+      filename = './Global_100km.14'
       CALL read_header(0,filename,grid_name,ne,nn)
       CALL read_coords(nn,xy,depth)
       CALL read_connectivity(ne,ect,el_type)
