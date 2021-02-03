@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#/usr/bin/python
 
 # netcdf4 reader for cesm remapping file
 
@@ -18,29 +18,24 @@ import math
 import glob
 import os
 import shutil # file operations
+import yaml
+import os
+import pprint
+#import cartopy.crs as ccrs
+#import cartopy.feature as cfeature
 
-#os.chdir('/Users/arbetter/Desktop/python/cesm_maps/RemappingFiles/')
-#os.getcwd()
 
 
-cesm_remap_blin_file = ['map_oEC60to30v3_TO_wQU50_blin.20210125.nc','map_wQU50_TO_oEC60to30v3_blin.20210125.nc']
-cesm_remap_stod_file = ['map_oEC60to30v3_TO_wQU50_nstod.20210125.nc','map_wQU50_TO_oEC60to30v3_nstod.20210125.nc']
-cesm_remap_splice_file = ['map_oEC60to30v3_TO_wQU50_splice.20210125.nc','map_wQU50_TO_oEC60to30v3_splice.20210125.nc']
-#cesm_remap_blin_file = ['map_T62_TO_wQU50_blin.20210125.nc','map_wQU50_TO_T62_blin.20210125.nc']
-#cesm_remap_stod_file = ['map_T62_TO_wQU50_nstod.20210125.nc','map_wQU50_TO_T62_nstod.20210125.nc']
-#cesm_remap_splice_file = ['map_T62_TO_wQU50_splice.20210125.nc','map_wQU50_TO_T62_splice.20210125.nc']
+pwd = os.getcwd()
 
-#cesm_remap_blin_file = ['map_gx1v6_TO_ww3a_blin.150511.nc','map_ww3a_TO_gx1v6_blin.150511.nc']
-#cesm_remap_stod_file = ['map_gx1v6_TO_ww3a_neareststod.150511.nc','map_ww3a_TO_gx1v6_neareststod.150511.nc']
-#cesm_remap_splice_file = ['map_gx1v6_TO_ww3a_splice.nc','map_ww3a_TO_gx1v6_splice.nc']
+f = open(pwd+'/cesm_splice_maps.config')
+cfg = yaml.load(f)
+pprint.pprint(cfg)
 
-#cesm_remap_blin_file = ['map_gx1v6_TO_ww3a_blin.150430.nc']
-#cesm_remap_stod_file = ['map_gx1v6_TO_ww3a_neareststod.150430.nc']
-#cesm_remap_splice_file = ['map_gx1v6_TO_ww3a_splice.nc']
+cesm_remap_blin_file = cfg['cesm_remap_blin_file']
+cesm_remap_stod_file = cfg['cesm_remap_stod_file']
+cesm_remap_splice_file = cfg['cesm_remap_splice_file']
 
-#cesm_remap_blin_file = ['map_ww3a_TO_gx3v7_blin.150311.nc']
-#cesm_remap_stod_file = ['map_ww3a_TO_gx3v7_neareststod.150311.nc']
-#cesm_remap_splice_file = ['map_ww3a_TO_gx3v7_splice.nc']
 
 
 nfiles = len(cesm_remap_blin_file)
