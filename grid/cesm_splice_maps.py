@@ -10,7 +10,6 @@
 # needs map of what points are being included that shouldn't be (compare blin_src_mask and blin_col_mask)?
 
 import netCDF4  # for netCDF
-from mpl_toolkits.basemap import Basemap  # mapping toolkit
 import matplotlib.pyplot as plt  # shorthand mapping
 import matplotlib.gridspec as gridspec # n x m figures
 import numpy as np # num num numpy
@@ -21,8 +20,8 @@ import shutil # file operations
 import yaml
 import os
 import pprint
-#import cartopy.crs as ccrs
-#import cartopy.feature as cfeature
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 
 
@@ -196,14 +195,6 @@ for k in range(0,nfiles):
 #end load stod block
 
 ### Blin mapping block
-# size the plot
-    blinfig = plt.figure(figsize=(12,7))
-
-### Create a 2x2 plot grid
-    blinfig = gridspec.GridSpec(2,3)
-
-### Create a map
-    blinmap = Basemap(llcrnrlon=0,llcrnrlat=-90,urcrnrlon=360,urcrnrlat=90,projection='mill')
 
 
 # using blin_src_mask as a mask, create a masked array where 0 is water (not 1)
@@ -261,37 +252,12 @@ for k in range(0,nfiles):
     blin_dst_lonuncalcland = blin_dst_lon[blin_dst_uncalc[:]]*(1-blin_dst_mask[blin_dst_uncalc[:]])
     blin_dst_latuncalcland = blin_dst_lat[blin_dst_uncalc[:]]*(1-blin_dst_mask[blin_dst_uncalc[:]])
 
-
-
 # blin_src_unused is the points not used in blin_row_ocn (not mapped) (col/src)
     blin_src_unused = np.setdiff1d(blin_src_allmask,s_col_blin)
     blin_src_lonunused = blin_src_lon[blin_src_unused[:]]*blin_src_mask[blin_src_unused[:]]
     blin_src_latunused = blin_src_lat[blin_src_unused[:]]*blin_src_mask[blin_src_unused[:]]
     blin_src_lonunusedland = blin_src_lon[blin_src_unused[:]]*(1-blin_src_mask[blin_src_unused[:]])
     blin_src_latunusedland = blin_src_lat[blin_src_unused[:]]*(1-blin_src_mask[blin_src_unused[:]])
-
-    print(blin_src_lonland.shape,blin_src_latland.shape)
-    blin_src_x, blin_src_y = blinmap(blin_src_lon,blin_src_lat)
-    blin_dst_x, blin_dst_y = blinmap(blin_dst_lon,blin_dst_lat)
-    blin_src_xocn, blin_src_yocn = blinmap(blin_src_lonocn,blin_src_latocn)
-    blin_dst_xocn, blin_dst_yocn = blinmap(blin_dst_lonocn,blin_dst_latocn)
-    if blin_src_lonland.size > 0 and blin_src_latlon.size > 0:
-      blin_src_xland, blin_src_yland = blinmap(blin_src_lonland,blin_src_latland)
-    if blin_dst_lonland.size > 0 and blin_dst_latlon.size > 0:
-      blin_dst_xland, blin_dst_yland = blinmap(blin_dst_lonland,blin_dst_latland)
-    blin_col_x, blin_col_y = blinmap(blin_col_lon,blin_col_lat)
-    blin_row_x, blin_row_y = blinmap(blin_row_lon,blin_row_lat)
-    blin_col_xocn, blin_col_yocn = blinmap(blin_col_lonocn,blin_col_latocn)
-    blin_row_xocn, blin_row_yocn = blinmap(blin_row_lonocn,blin_row_latocn)
-    blin_col_xland,blin_col_yland = blinmap(blin_col_lonland,blin_col_latland)
-    blin_row_xland,blin_row_yland = blinmap(blin_row_lonland,blin_row_latland)
-    blin_src_xunused,blin_src_yunused = blinmap(blin_src_lonunused,blin_src_latunused)
-    if blin_dst_lonuncalc.size > 0 and blin_dst_latuncalc.size > 0:
-      blin_dst_xuncalc,blin_dst_yuncalc = blinmap(blin_dst_lonuncalc,blin_dst_latuncalc)
-    blin_src_xunusedland,blin_src_yunusedland = blinmap(blin_src_lonunusedland,blin_src_latunusedland)
-    if blin_dst_lonuncalcland.size > 0 and blin_dst_latuncalcland.size > 0 :
-      blin_dst_xuncalcland,blin_dst_yuncalcland = blinmap(blin_dst_lonuncalcland,blin_dst_latuncalcland)
-
 
     print('read stod & blin')
 
@@ -301,80 +267,55 @@ for k in range(0,nfiles):
 #    blin_col_field[:] = blin_src_landmask[s_col_blin[:]]
 #blin_row_field[:] = blin_dst_landmask[s_row_blin[:]]
 
-
+    fig = plt.figure(figsize=(12,7))
 
 # and a subplot for src
-    srcmap = plt.subplot2grid((2,3),(0,0))
-    blinmap.drawcoastlines()
-
-# scatter markers
-    if blin_src_lonland.size > 0 and blin_src_latlon.size > 0:
-      blinmap.scatter(blin_src_xland,blin_src_yland,5,color='red',marker='+')
-    blinmap.scatter(blin_src_xocn,blin_src_yocn,3,color='blue')
-
-#    plt.title(cesm_remap_file[i])
-    plt.title('SRC GRID')
+    srcmap = fig.add_subplot(2,3,1,projection=ccrs.Miller(central_longitude=180.0))
+    srcmap.scatter(blin_src_lonland,blin_src_latland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcmap.scatter(blin_src_lonocn,blin_src_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcmap.add_feature(cfeature.COASTLINE)
+    srcmap.set_title('SRC GRID')
 
 # subplot for points used in interp
-    srcfig = plt.subplot2grid((2,3),(0,1))
-    blinmap.drawcoastlines()
-    blinmap.scatter(blin_col_xland,blin_col_yland,color='red',marker='+')
-    blinmap.scatter(blin_col_xocn,blin_col_yocn,3,color='blue')
-
-#   blinmap.drawcoastlines()
-    plt.title('SRC IN')
+    srcfig = fig.add_subplot(2,3,2,projection=ccrs.Miller(central_longitude=180.0))
+    srcfig.scatter(blin_col_lonland,blin_col_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcfig.scatter(blin_col_lonocn,blin_col_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcfig.add_feature(cfeature.COASTLINE)
+    srcfig.set_title('SRC IN')
 
 # subplot for ocean points not used in interp
-    unusedfig = plt.subplot2grid((2,3),(0,2))
-    blinmap.drawcoastlines()
-    blinmap.scatter(blin_src_xunusedland,blin_src_yunusedland,5,color='red',marker='+')
-    blinmap.scatter(blin_src_xunused,blin_src_yunused,3,color='blue')
-
-    plt.title('SRC UNUSED')
+    unusedfig = fig.add_subplot(2,3,3,projection=ccrs.Miller(central_longitude=180.0))
+    unusedfig.scatter(blin_src_lonunusedland,blin_src_latunusedland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    unusedfig.scatter(blin_src_lonunused,blin_src_latunused,3,color='blue',transform=ccrs.PlateCarree())
+    unusedfig.add_feature(cfeature.COASTLINE)
+    unusedfig.set_title('SRC UNUSED')
 
 # subplot for ocean points not calculated
-
-    uncalcfig = plt.subplot2grid((2,3),(1,2))
-    blinmap.drawcoastlines()
-    if blin_dst_lonuncalcland.size > 0 and blin_dst_latuncalcland.size > 0 :
-      blinmap.scatter(blin_dst_xuncalcland,blin_dst_yuncalcland,5,color='red',marker='+')
-    if blin_dst_lonuncalc.size > 0 and blin_dst_latuncalc.size > 0:
-      blinmap.scatter(blin_dst_xuncalc,blin_dst_yuncalc,3,color='blue')
-
-    plt.title('DST UNCALC')
+    uncalcfig = fig.add_subplot(2,3,6,projection=ccrs.Miller(central_longitude=180.0))
+    uncalcfig.scatter(blin_dst_lonuncalcland,blin_dst_latuncalcland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    uncalcfig.scatter(blin_dst_lonuncalc,blin_dst_latuncalc,3,color='blue',transform=ccrs.PlateCarree())
+    uncalcfig.add_feature(cfeature.COASTLINE)
+    uncalcfig.set_title('DST UNCALC')
 
 # subplot for points calculated in interp
-    dstfig=plt.subplot2grid((2,3),(1,1))
-    blinmap.drawcoastlines()
-
-    blinmap.scatter(blin_row_xland,blin_row_yland,color='red',marker='+')
-    blinmap.scatter(blin_row_xocn,blin_row_yocn,3,color='blue')
-
-#    for i in range(0,s_n):
-#        if blin_row_field[i] == 1:
-#            blinmap.scatter(blin_row_x[i],blin_row_y[i],5,color='red',marker='+')
-#        else:
-#            blinmap.scatter(blin_row_x[i],blin_row_y[i],3,color='blue')
-
-    plt.title('DST OUT')
-
+    dstfig = fig.add_subplot(2,3,5,projection=ccrs.Miller(central_longitude=180.0))
+    dstfig.scatter(blin_row_lonland,blin_row_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstfig.scatter(blin_row_lonocn,blin_row_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstfig.add_feature(cfeature.COASTLINE)
+    dstfig.set_title('DST OUT')
 
 # and a subplot for dst
-    dstmap = plt.subplot2grid((2,3),(1,0))
-    blinmap.drawcoastlines()
+    dstmap = fig.add_subplot(2,3,4,projection=ccrs.Miller(central_longitude=180.0))
+    dstmap.scatter(blin_dst_lonland,blin_dst_latland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstmap.scatter(blin_dst_lonocn,blin_dst_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstmap.add_feature(cfeature.COASTLINE)
+    dstmap.set_title('DST GRID')
 
-# scatter markers
-    if blin_dst_lonland.size > 0 and blin_dst_latlon.size > 0:
-      blinmap.scatter(blin_dst_xland,blin_dst_yland,5,color='red',marker='+')
-    blinmap.scatter(blin_dst_xocn,blin_dst_yocn,3,color='blue')
-
-    plt.title('DST GRID')
-
-    plt.suptitle(cesm_remap_blin_file[k])
+    fig.suptitle(cesm_remap_blin_file[k])
 
     if showplots == 1:
         plt.show()
-    plt.savefig(cesm_remap_blin_file[k]+'.png')
+    plt.savefig(cesm_remap_blin_file[k]+'.png',bbox_inches='tight')
 
     if showplots == 0:
         plt.close()
@@ -383,15 +324,6 @@ for k in range(0,nfiles):
 ### End Blin Map block
 
 ### StoDmapping block
-# size the plot
-    stodfig = plt.figure(figsize=(12,7))
-
-### Create a 2x2 plot grid
-    stodfig = gridspec.GridSpec(2,3)
-
-### Create a map
-    stodmap = Basemap(llcrnrlon=0,llcrnrlat=-90,urcrnrlon=360,urcrnrlat=90,projection='mill')
-
 
 # using stod_src_mask as a mask, create a masked array where 0 is water (not 1)
     stod_src_omask = np.asarray(stod_src_mask)   ### 0 = land, 1 = ocn
@@ -448,37 +380,12 @@ for k in range(0,nfiles):
     stod_dst_lonuncalcland = stod_dst_lon[stod_dst_uncalc[:]]*(1-stod_dst_mask[stod_dst_uncalc[:]])
     stod_dst_latuncalcland = stod_dst_lat[stod_dst_uncalc[:]]*(1-stod_dst_mask[stod_dst_uncalc[:]])
 
-
-
 # stod_src_unused is the points not used in stod_row_ocn (not mapped) (col/src)
     stod_src_unused = np.setdiff1d(stod_src_allmask,s_col_stod)
     stod_src_lonunused = stod_src_lon[stod_src_unused[:]]*stod_src_mask[stod_src_unused[:]]
     stod_src_latunused = stod_src_lat[stod_src_unused[:]]*stod_src_mask[stod_src_unused[:]]
     stod_src_lonunusedland = stod_src_lon[stod_src_unused[:]]*(1-stod_src_mask[stod_src_unused[:]])
     stod_src_latunusedland = stod_src_lat[stod_src_unused[:]]*(1-stod_src_mask[stod_src_unused[:]])
-
-
-    stod_src_x, stod_src_y = stodmap(stod_src_lon,stod_src_lat)
-    stod_dst_x, stod_dst_y = stodmap(stod_dst_lon,stod_dst_lat)
-    stod_src_xocn, stod_src_yocn = stodmap(stod_src_lonocn,stod_src_latocn)
-    stod_dst_xocn, stod_dst_yocn = stodmap(stod_dst_lonocn,stod_dst_latocn)
-    if stod_src_lonland.size > 0 and stod_src_latland > 0:
-      stod_src_xland, stod_src_yland = stodmap(stod_src_lonland,stod_src_latland)
-    if stod_dst_lonland.size > 0 and stod_dst_latland > 0:
-      stod_dst_xland, stod_dst_yland = stodmap(stod_dst_lonland,stod_dst_latland)
-    stod_col_x, stod_col_y = stodmap(stod_col_lon,stod_col_lat)
-    stod_row_x, stod_row_y = stodmap(stod_row_lon,stod_row_lat)
-    stod_col_xocn, stod_col_yocn = stodmap(stod_col_lonocn,stod_col_latocn)
-    stod_row_xocn, stod_row_yocn = stodmap(stod_row_lonocn,stod_row_latocn)
-    stod_col_xland,stod_col_yland = stodmap(stod_col_lonland,stod_col_latland)
-    stod_row_xland,stod_row_yland = stodmap(stod_row_lonland,stod_row_latland)
-    stod_src_xunused,stod_src_yunused = stodmap(stod_src_lonunused,stod_src_latunused)
-    if stod_dst_lonuncalc.size > 0 and stod_dst_latuncalc > 0:
-      stod_dst_xuncalc,stod_dst_yuncalc = stodmap(stod_dst_lonuncalc,stod_dst_latuncalc)
-    stod_src_xunusedland,stod_src_yunusedland = stodmap(stod_src_lonunusedland,stod_src_latunusedland)
-    if stod_dst_lonuncalcland.size > 0 and stod_dst_latuncalcland.size > 0:
-      stod_dst_xuncalcland,stod_dst_yuncalcland = stodmap(stod_dst_lonuncalcland,stod_dst_latuncalcland)
-
 
     print('here')
 
@@ -488,81 +395,56 @@ for k in range(0,nfiles):
 #    stod_col_field[:] = stod_src_landmask[s_col_stod[:]]
 #stod_row_field[:] = stod_dst_landmask[s_row_stod[:]]
 
-
+    fig = plt.figure(figsize=(12,7))
 
 # and a subplot for src
-    srcmap = plt.subplot2grid((2,3),(0,0))
-    stodmap.drawcoastlines()
-
-# scatter markers
-    if stod_src_lonland.size > 0 and stod_src_latland > 0:
-      stodmap.scatter(stod_src_xland,stod_src_yland,5,color='red',marker='+')
-    stodmap.scatter(stod_src_xocn,stod_src_yocn,3,color='blue')
-
-#    plt.title(cesm_remap_file[i])
-    plt.title('SRC GRID')
+    srcmap = fig.add_subplot(2,3,1,projection=ccrs.Miller(central_longitude=180.0)) 
+    srcmap.scatter(stod_src_lonland,stod_src_latland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcmap.scatter(stod_src_lonocn,stod_src_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcmap.add_feature(cfeature.COASTLINE)
+    srcmap.set_title('SRC GRID')
 
 # subplot for points used in interp
-    srcfig = plt.subplot2grid((2,3),(0,1))
-    stodmap.drawcoastlines()
-    stodmap.scatter(stod_col_xland,stod_col_yland,color='red',marker='+')
-    stodmap.scatter(stod_col_xocn,stod_col_yocn,3,color='blue')
-
-#   stodmap.drawcoastlines()
-    plt.title('SRC IN')
+    srcfig = fig.add_subplot(2,3,2,projection=ccrs.Miller(central_longitude=180.0)) 
+    srcfig.scatter(stod_col_lonland,stod_col_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcfig.scatter(stod_col_lonocn,stod_col_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcfig.add_feature(cfeature.COASTLINE)
+    srcfig.set_title('SRC IN')
 
 # subplot for ocean points not used in interp
-    unusedfig = plt.subplot2grid((2,3),(0,2))
-    stodmap.drawcoastlines()
-    stodmap.scatter(stod_src_xunusedland,stod_src_yunusedland,5,color='red',marker='+')
-    stodmap.scatter(stod_src_xunused,stod_src_yunused,3,color='blue')
-
-    plt.title('SRC UNUSED')
+    unusedfig = fig.add_subplot(2,3,3,projection=ccrs.Miller(central_longitude=180.0)) 
+    unusedfig.scatter(stod_src_lonunusedland,stod_src_latunusedland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    unusedfig.scatter(stod_src_lonunused,stod_src_latunused,3,color='blue',transform=ccrs.PlateCarree())
+    unusedfig.add_feature(cfeature.COASTLINE)
+    unusedfig.set_title('SRC UNUSED')
 
 # subplot for ocean points not calculated
-
-    uncalcfig = plt.subplot2grid((2,3),(1,2))
-    stodmap.drawcoastlines()
-    if stod_dst_lonuncalcland.size > 0 and stod_dst_latuncalcland.size > 0:
-      stodmap.scatter(stod_dst_xuncalcland,stod_dst_yuncalcland,5,color='red',marker='+')
-    if stod_dst_lonuncalc.size > 0 and stod_dst_latuncalc > 0:
-      stodmap.scatter(stod_dst_xuncalc,stod_dst_yuncalc,3,color='blue')
-
-    plt.title('DST UNCALC')
+    uncalcfig = fig.add_subplot(2,3,6,projection=ccrs.Miller(central_longitude=180.0)) 
+    uncalcfig.scatter(stod_dst_lonuncalcland,stod_dst_latuncalcland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    uncalcfig.scatter(stod_dst_lonuncalc,stod_dst_latuncalc,3,color='blue',transform=ccrs.PlateCarree())
+    uncalcfig.add_feature(cfeature.COASTLINE)
+    uncalcfig.set_title('DST UNCALC')
 
 # subplot for points calculated in interp
-    dstfig=plt.subplot2grid((2,3),(1,1))
-    stodmap.drawcoastlines()
-
-    stodmap.scatter(stod_row_xland,stod_row_yland,color='red',marker='+')
-    stodmap.scatter(stod_row_xocn,stod_row_yocn,3,color='blue')
-
-#    for i in range(0,s_n):
-#        if stod_row_field[i] == 1:
-#            stodmap.scatter(stod_row_x[i],stod_row_y[i],5,color='red',marker='+')
-#        else:
-#            stodmap.scatter(stod_row_x[i],stod_row_y[i],3,color='blue')
-
-    plt.title('DST OUT')
-
+    dstfig = fig.add_subplot(2,3,5,projection=ccrs.Miller(central_longitude=180.0))
+    dstfig.scatter(stod_row_lonland,stod_row_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstfig.scatter(stod_row_lonocn,stod_row_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstfig.add_feature(cfeature.COASTLINE)
+    dstfig.set_title('DST OUT')
 
 # and a subplot for dst
-    dstmap = plt.subplot2grid((2,3),(1,0))
-    stodmap.drawcoastlines()
+    dstmap = fig.add_subplot(2,3,4,projection=ccrs.Miller(central_longitude=180.0)) 
+    dstmap.scatter(stod_dst_lonland,stod_dst_latland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstmap.scatter(stod_dst_lonocn,stod_dst_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstmap.add_feature(cfeature.COASTLINE)
+    dstmap.set_title('DST GRID')
 
-# scatter markers
-    if stod_dst_lonland.size > 0 and stod_dst_latland > 0:
-      stodmap.scatter(stod_dst_xland,stod_dst_yland,5,color='red',marker='+')
-    stodmap.scatter(stod_dst_xocn,stod_dst_yocn,3,color='blue')
-
-    plt.title('DST GRID')
-
-    plt.suptitle(cesm_remap_stod_file[k])
+    fig.suptitle(cesm_remap_stod_file[k])
 
     if showplots == 1:
         plt.show()
 
-    plt.savefig(cesm_remap_stod_file[k]+'.png')
+    plt.savefig(cesm_remap_stod_file[k]+'.png',bbox_inches='tight')
 
     if showplots == 0:
         plt.close()
@@ -621,83 +503,54 @@ for k in range(0,nfiles):
     xtra_src_latland = blin_src_lat[xtra_src_landpts]
 
 # size the plot
-    xtrafig = plt.figure(figsize=(12,7))
-
-### Create a 2x2 plot grid
-    xtrafig = gridspec.GridSpec(2,3)
-
-### Create a map
-    xtramap = Basemap(llcrnrlon=0,llcrnrlat=-90,urcrnrlon=360,urcrnrlat=90,projection='mill')
-
-    xtra_dst_xocn, xtra_dst_yocn = xtramap(xtra_dst_lonocn,xtra_dst_latocn)
-    if xtra_dst_lonland.size > 0 and xtra_dst_latland > 0: 
-      xtra_dst_xland, xtra_dst_yland = xtramap(xtra_dst_lonland,xtra_dst_latland)
-
-    xtra_src_xocn, xtra_src_yocn = xtramap(xtra_src_lonocn,xtra_src_latocn)
-    if xtra_src_lonland.size > 0 and xtra_src_latland > 0: 
-      xtra_src_xland, xtra_src_yland = xtramap(xtra_src_lonland,xtra_src_latland)
-
-    # subplot for points used in interp
-    srcfig = plt.subplot2grid((2,3),(0,2))
-    xtramap.drawcoastlines()
-#    xtramap.scatter(xtra_not_x,xtra_not_y,3,color='purple')
-    if xtra_dst_lonland.size > 0 and xtra_dst_latland > 0:
-      xtramap.scatter(xtra_dst_xland,xtra_dst_yland,color='red',marker='+')
-    xtramap.scatter(xtra_dst_xocn,xtra_dst_yocn,3,color='blue')
-
-    plt.title('xtra DST OUT')
-
-# subplot for points calculated in interp
-    dstfig=plt.subplot2grid((2,3),(0,1))
-    stodmap.drawcoastlines()
-
-    stodmap.scatter(stod_row_xland,stod_row_yland,color='red',marker='+')
-    stodmap.scatter(stod_row_xocn,stod_row_yocn,3,color='blue')
-
-    plt.title('STOD DST OUT')
-
-    # subplot for points calculated in interp
-    dstfig=plt.subplot2grid((2,3),(0,0))
-    blinmap.drawcoastlines()
-
-    blinmap.scatter(blin_row_xland,blin_row_yland,color='red',marker='+')
-    blinmap.scatter(blin_row_xocn,blin_row_yocn,3,color='blue')
-
-    plt.title('BLIN DST OUT')
-
-        # subplot for points used in interp
-    srcfig = plt.subplot2grid((2,3),(1,2))
-    xtramap.drawcoastlines()
-#    xtramap.scatter(xtra_not_x,xtra_not_y,3,color='purple')
-    if  xtra_src_lonland.size > 0 and xtra_src_latland > 0:
-      xtramap.scatter(xtra_src_xland,xtra_src_yland,color='red',marker='+')
-    xtramap.scatter(xtra_src_xocn,xtra_src_yocn,3,color='blue')
-
-    xtramap.drawcoastlines()
-    plt.title('xtra SRC IN')
+    fig = plt.figure(figsize=(12,7))
 
 # subplot for points used in interp
-    srcfig = plt.subplot2grid((2,3),(1,1))
-    stodmap.drawcoastlines()
-    stodmap.scatter(stod_col_xland,stod_col_yland,color='red',marker='+')
-    stodmap.scatter(stod_col_xocn,stod_col_yocn,3,color='blue')
+    dstfig = fig.add_subplot(2,3,3,projection=ccrs.Miller(central_longitude=180.0))
+    dstfig.scatter(xtra_dst_lonland,xtra_dst_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstfig.scatter(xtra_dst_lonocn,xtra_dst_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstfig.add_feature(cfeature.COASTLINE)
+    dstfig.set_title('xtra DST OUT')
 
-#   stodmap.drawcoastlines()
-    plt.title('STOD SRC IN')
+# subplot for points calculated in interp
+    dstfig = fig.add_subplot(2,3,2,projection=ccrs.Miller(central_longitude=180.0))
+    dstfig.scatter(stod_row_lonland,stod_row_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstfig.scatter(stod_row_lonocn,stod_row_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstfig.add_feature(cfeature.COASTLINE)
+    dstfig.set_title('STOD DST OUT')
 
-    srcfig = plt.subplot2grid((2,3),(1,0))
-    blinmap.drawcoastlines()
-    blinmap.scatter(blin_col_xland,blin_col_yland,color='red',marker='+')
-    blinmap.scatter(blin_col_xocn,blin_col_yocn,3,color='blue')
+# subplot for points calculated in interp
+    dstfig = fig.add_subplot(2,3,1,projection=ccrs.Miller(central_longitude=180.0))
+    dstfig.scatter(blin_row_lonland,blin_row_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstfig.scatter(blin_row_lonocn,blin_row_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstfig.add_feature(cfeature.COASTLINE)
+    dstfig.set_title('BLIN DST OUT')
 
-#   blinmap.drawcoastlines()
-    plt.title('BLIN SRC IN')
+# subplot for points used in interp
+    srcfig = fig.add_subplot(2,3,6,projection=ccrs.Miller(central_longitude=180.0))
+    srcfig.scatter(xtra_src_lonland,xtra_src_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcfig.scatter(xtra_src_lonocn,xtra_src_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcfig.add_feature(cfeature.COASTLINE)
+    srcfig.set_title('xtra SRC IN')
+
+# subplot for points used in interp
+    srcfig = fig.add_subplot(2,3,5,projection=ccrs.Miller(central_longitude=180.0))
+    srcfig.scatter(stod_col_lonland,stod_col_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcfig.scatter(stod_col_lonocn,stod_col_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcfig.add_feature(cfeature.COASTLINE)
+    srcfig.set_title('STOD SRC IN')
+
+    srcfig = fig.add_subplot(2,3,4,projection=ccrs.Miller(central_longitude=180.0))
+    srcfig.scatter(blin_col_lonland,blin_col_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcfig.scatter(blin_col_lonocn,blin_col_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcfig.add_feature(cfeature.COASTLINE)
+    srcfig.set_title('BLIN SRC IN')
 
 
     if showplots == 1:
         plt.show()
 
-    plt.savefig(cesm_remap_blin_file[k]+'_2.png')
+    plt.savefig(cesm_remap_blin_file[k]+'_2.png',bbox_inches='tight')
 
     if showplots == 0:
         plt.close()
@@ -866,15 +719,6 @@ for k in range(0,nfiles):
 #end load stod block
 
 ### Spice mapping block
-# size the plot
-    splicefig = plt.figure(figsize=(12,7))
-
-### Create a 2x2 plot grid
-    splicefig = gridspec.GridSpec(2,3)
-
-### Create a map
-    splicemap = Basemap(llcrnrlon=0,llcrnrlat=-90,urcrnrlon=360,urcrnrlat=90,projection='mill')
-
 
 # using splice_src_mask as a mask, create a masked array where 0 is water (not 1)
     splice_src_omask = np.asarray(splice_src_mask)   ### 0 = land, 1 = ocn
@@ -940,28 +784,6 @@ for k in range(0,nfiles):
     splice_src_lonunusedland = splice_src_lon[splice_src_unused[:]]*(1-splice_src_mask[splice_src_unused[:]])
     splice_src_latunusedland = splice_src_lat[splice_src_unused[:]]*(1-splice_src_mask[splice_src_unused[:]])
 
-
-    splice_src_x, splice_src_y = splicemap(splice_src_lon,splice_src_lat)
-    splice_dst_x, splice_dst_y = splicemap(splice_dst_lon,splice_dst_lat)
-    splice_src_xocn, splice_src_yocn = splicemap(splice_src_lonocn,splice_src_latocn)
-    splice_dst_xocn, splice_dst_yocn = splicemap(splice_dst_lonocn,splice_dst_latocn)
-    if splice_src_lonland.size > 0 and splice_src_latland.size > 0: 
-      splice_src_xland, splice_src_yland = splicemap(splice_src_lonland,splice_src_latland)
-    if splice_dst_lonland.size > 0 and splice_dst_latland.size > 0:
-      splice_dst_xland, splice_dst_yland = splicemap(splice_dst_lonland,splice_dst_latland)
-    splice_col_x, splice_col_y = splicemap(splice_col_lon,splice_col_lat)
-    splice_row_x, splice_row_y = splicemap(splice_row_lon,splice_row_lat)
-    splice_col_xocn, splice_col_yocn = splicemap(splice_col_lonocn,splice_col_latocn)
-    splice_row_xocn, splice_row_yocn = splicemap(splice_row_lonocn,splice_row_latocn)
-    splice_col_xland, splice_col_yland = splicemap(splice_col_lonland,splice_col_latland)
-    splice_row_xland, splice_row_yland = splicemap(splice_row_lonland,splice_row_latland)
-    splice_src_xunused, splice_src_yunused = splicemap(splice_src_lonunused,splice_src_latunused)
-    if splice_dst_lonuncalc.size > 0 and splice_dst_latuncalc.size > 0:
-      splice_dst_xuncalc, splice_dst_yuncalc = splicemap(splice_dst_lonuncalc,splice_dst_latuncalc)
-    splice_src_xunusedland, splice_src_yunusedland = splicemap(splice_src_lonunusedland,splice_src_latunusedland)
-    if splice_dst_lonuncalcland.size > 0 and splice_dst_latuncalcland.size > 0:
-      splice_dst_xuncalcland, splice_dst_yuncalcland = splicemap(splice_dst_lonuncalcland,splice_dst_latuncalcland)
-
     print('splicing done')
 
 # here want to mark the points that are being used to create
@@ -971,81 +793,55 @@ for k in range(0,nfiles):
 #splice_row_field[:] = splice_dst_landmask[s_row_splice[:]]
 
 
+    fig = plt.figure(figsize=(12,7))
 
 # and a subplot for src
-    srcmap = plt.subplot2grid((2,3),(0,0))
-    splicemap.drawcoastlines()
-
-# scatter markers
-    if splice_src_lonland.size > 0 and splice_src_latland.size > 0:
-      splicemap.scatter(splice_src_xland,splice_src_yland,5,color='red',marker='+')
-    splicemap.scatter(splice_src_xocn,splice_src_yocn,3,color='blue')
-
-#    plt.title(cesm_remap_file[i])
-    plt.title('SRC GRID')
+    srcmap = fig.add_subplot(2,3,1,projection=ccrs.Miller(central_longitude=180.0)) 
+    srcmap.scatter(splice_src_lonland,splice_src_latland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcmap.scatter(splice_src_lonocn,splice_src_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcmap.add_feature(cfeature.COASTLINE)
+    srcmap.set_title('SRC GRID')
 
 # subplot for points used in interp
-    srcfig = plt.subplot2grid((2,3),(0,1))
-    splicemap.drawcoastlines()
-    splicemap.scatter(splice_col_xland,splice_col_yland,color='red',marker='+')
-    splicemap.scatter(splice_col_xocn,splice_col_yocn,3,color='blue')
-
-#   splicemap.drawcoastlines()
-    plt.title('SRC IN')
+    srcfig = fig.add_subplot(2,3,2,projection=ccrs.Miller(central_longitude=180.0))
+    srcfig.scatter(splice_col_lonland,splice_col_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    srcfig.scatter(splice_col_lonocn,splice_col_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    srcfig.add_feature(cfeature.COASTLINE)
+    srcfig.set_title('SRC IN')
 
 # subplot for ocean points not used in interp
-    unusedfig = plt.subplot2grid((2,3),(0,2))
-    splicemap.drawcoastlines()
-    splicemap.scatter(splice_src_xunusedland,splice_src_yunusedland,5,color='red',marker='+')
-    splicemap.scatter(splice_src_xunused,splice_src_yunused,3,color='blue')
-
-    plt.title('SRC UNUSED')
+    unusedfig = fig.add_subplot(2,3,3,projection=ccrs.Miller(central_longitude=180.0))
+    unusedfig.scatter(splice_src_lonunusedland,splice_src_latunusedland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    unusedfig.scatter(splice_src_lonunused,splice_src_latunused,3,color='blue',transform=ccrs.PlateCarree())
+    unusedfig.add_feature(cfeature.COASTLINE)
+    unusedfig.set_title('SRC UNUSED')
 
 # subplot for ocean points not calculated
-
-    uncalcfig = plt.subplot2grid((2,3),(1,2))
-    splicemap.drawcoastlines()
-    if splice_dst_lonuncalcland.size > 0 and splice_dst_latuncalcland.size > 0:
-      splicemap.scatter(splice_dst_xuncalcland,splice_dst_yuncalcland,5,color='red',marker='+')
-    if splice_dst_lonuncalc.size > 0 and splice_dst_latuncalc.size > 0:
-      splicemap.scatter(splice_dst_xuncalc,splice_dst_yuncalc,3,color='blue')
-
-    plt.title('DST UNCALC')
+    uncalcfig = fig.add_subplot(2,3,6,projection=ccrs.Miller(central_longitude=180.0))
+    uncalcfig.scatter(splice_dst_lonuncalcland,splice_dst_latuncalcland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    uncalcfig.scatter(splice_dst_lonuncalc,splice_dst_latuncalc,3,color='blue',transform=ccrs.PlateCarree())
+    uncalcfig.add_feature(cfeature.COASTLINE)
+    uncalcfig.set_title('DST UNCALC')
 
 # subplot for points calculated in interp
-    dstfig=plt.subplot2grid((2,3),(1,1))
-    splicemap.drawcoastlines()
-
-    splicemap.scatter(splice_row_xland,splice_row_yland,color='red',marker='+')
-    splicemap.scatter(splice_row_xocn,splice_row_yocn,3,color='blue')
-
-#    for i in range(0,s_n):
-#        if splice_row_field[i] == 1:
-#            splicemap.scatter(splice_row_x[i],splice_row_y[i],5,color='red',marker='+')
-#        else:
-#            splicemap.scatter(splice_row_x[i],splice_row_y[i],3,color='blue')
-
-    plt.title('DST OUT')
-
+    dstfig = fig.add_subplot(2,3,5,projection=ccrs.Miller(central_longitude=180.0))
+    dstfig.scatter(splice_row_lonland,splice_row_latland,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstfig.scatter(splice_row_lonocn,splice_row_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstfig.add_feature(cfeature.COASTLINE)
+    dstfig.set_title('DST OUT')
 
 # and a subplot for dst
-    dstmap = plt.subplot2grid((2,3),(1,0))
-    splicemap.drawcoastlines()
-
-# scatter markers
-    if splice_dst_lonland.size > 0 and splice_dst_latland.size > 0:
-      splicemap.scatter(splice_dst_xland,splice_dst_yland,5,color='red',marker='+')
-    splicemap.scatter(splice_dst_xocn,splice_dst_yocn,3,color='blue')
-
-    plt.title('DST GRID')
+    dstmap = fig.add_subplot(2,3,4,projection=ccrs.Miller(central_longitude=180.0))
+    dstmap.scatter(splice_dst_lonland,splice_dst_latland,5,color='red',marker='+',transform=ccrs.PlateCarree())
+    dstmap.scatter(splice_dst_lonocn,splice_dst_latocn,3,color='blue',transform=ccrs.PlateCarree())
+    dstmap.add_feature(cfeature.COASTLINE)
+    dstmap.set_title('DST GRID')
 
     plt.suptitle(cesm_remap_splice_file[k])
 
-    plt.show()
-
     if showplots == 1:
         plt.show()
-    plt.savefig(cesm_remap_splice_file[k]+'.png')
+    plt.savefig(cesm_remap_splice_file[k]+'.png',bbox_inches='tight')
 
     if showplots == 0:
        plt.close()
@@ -1057,14 +853,6 @@ for k in range(0,nfiles):
 
     if (cleanup):
 
-        del blin_col_x
-        del blin_col_y
-        del blin_row_x
-        del blin_row_y
-        del blin_src_x
-        del blin_src_y
-        del blin_dst_x
-        del blin_dst_y
         del blin_dst_ocnpts
         del blin_dst_landpts
         del blin_src_lon
@@ -1076,16 +864,6 @@ for k in range(0,nfiles):
         del blin_row_lon
         del blin_row_lat
 
-        del blinmap
-
-        del stod_col_x
-        del stod_col_y
-        del stod_row_x
-        del stod_row_y
-        del stod_src_x
-        del stod_src_y
-        del stod_dst_x
-        del stod_dst_y
         del stod_dst_ocnpts
         del stod_dst_landpts
         del stod_src_lon
@@ -1097,16 +875,6 @@ for k in range(0,nfiles):
         del stod_row_lon
         del stod_row_lat
 
-        del stodmap
-
-        del splice_col_x
-        del splice_col_y
-        del splice_row_x
-        del splice_row_y
-        del splice_src_x
-        del splice_src_y
-        del splice_dst_x
-        del splice_dst_y
         del splice_dst_ocnpts
         del splice_dst_landpts
         del splice_src_lon
@@ -1117,8 +885,6 @@ for k in range(0,nfiles):
         del splice_col_lat
         del splice_row_lon
         del splice_row_lat
-
-        del splicemap
 
         del s_row_xtra
         del xtra_row_list
