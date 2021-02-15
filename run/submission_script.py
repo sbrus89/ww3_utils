@@ -1,6 +1,6 @@
 import datetime
 
-def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,filename='run.sub',account='e3sm',email='sbrus@lanl.gov',pre_cmds=[],post_cmds=[],compiler='intel'):
+def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,filename='run.sub',account=None,email='sbrus@anl.gov',pre_cmds=[],post_cmds=[],compiler='intel'):
 
   # Machine specific settings
   if machine == "grizzly":
@@ -24,6 +24,8 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
     module_use = ['/usr/projects/climate/SHARED_CLIMATE/modulefiles/all/']
     queues = {'standard'   :{'np_min':1   ,'np_max':53640,'t_lim':16.0},
               'interactive':{'np_min':1   ,'np_max':2520 ,'t_lim':4.0 }}
+    if account == None:
+      account = 'e3sm'
   elif machine == "badger":
     cores_per_node = 36
     if compiler == 'gnu':
@@ -38,6 +40,26 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
     module_use = []
     queues = {'standard'   :{'np_min':1,'np_max':3600,'t_lim':16.0},
               'interactive':{'np_min':1,'np_max':72  ,'t_lim':2.0 }}
+    if account == None:
+      account = 'e3sm'
+  elif machine == "blues":
+    cores_per_node = 36
+    if compiler == 'intel':
+      module_load = ['intel/17.0.0-pwabdn2',
+                     'mvapich2/2.2-verbs-qwuab3b',
+                     'netcdf/4.4.1-tckdgwl',
+                     'netcdf-fortran/4.4.4-urmb6ss']
+    else:
+      print('compiler not supported')
+      raise SystemExit(0)
+    module_purge = True
+    module_use = []
+    queues = {'acme-small'   :{'np_min':1,'np_max':180 ,'t_lim':48.0},
+              'acme-medium'  :{'np_min':181,'np_max':2160,'t_lim':24.0 },
+              'acme-large'   :{'np_min':2161,'np_max':8640,'t_lim':12.0 }}
+    partition = queue
+    if account == None:
+      account = 'condo'
   
   
   # Checks
@@ -60,12 +82,16 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
   else:
     time = queues[queue]['t_lim']  
 
+
   # Calculate some parameters
   nnodes = int(ncores/cores_per_node)
   if nnodes < 1:
     nnodes = 1
   time = str(datetime.timedelta(hours=time))
   
+  if machine == 'blues':
+    queue = None
+
   # SBATCH options  
   sbatch = {'nodes'    : str(nnodes),
             'time'     : time,
@@ -74,6 +100,7 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
             'output'   : job_name+'.o%j',
             'error'    : job_name+'.e%j',
             'qos'      : queue,
+            'partition': partition,
             'mail-user': email,
             'mail-type': 'all'}
 
@@ -81,7 +108,8 @@ def write_submission_script(machine,ncores,job_name,queue,exe=None,time=None,fil
   f = open(filename,'w')
   f.write('#!/bin/bash\n')
   for opt in sbatch:
-    f.write('#SBATCH --'+opt+'='+sbatch[opt]+'\n')
+    if sbatch[opt] != None:
+      f.write('#SBATCH --'+opt+'='+sbatch[opt]+'\n')
   f.write('\n')
 
   # Write submission script module loads
@@ -122,8 +150,8 @@ if __name__ == '__main__':
   parser.add_argument("--exe"       ,type=str,   help="main executable name"  , default=None)
   parser.add_argument("--time"      ,type=float, help="time limit (hours)"    , default=None)
   parser.add_argument("--file_name" ,type=str,   help="submission script name", default='run.sub')
-  parser.add_argument("--account"   ,type=str,   help="name of allocation    ", default='e3sm')
-  parser.add_argument("--email"     ,type=str,   help="email to send run information", default='sbrus@lanl.gov')
+  parser.add_argument("--account"   ,type=str,   help="name of allocation    ", default=None)
+  parser.add_argument("--email"     ,type=str,   help="email to send run information", default='sbrus@anl.gov')
   parser.add_argument("--pre_cmds"  ,type=str,   help="commands to run before main executable", nargs='*',default=[])
   parser.add_argument("--post_cmds" ,type=str,   help="commands to run after main executable" , nargs='*',default=[])
   parser.add_argument("--compiler"   ,type=str,   help="compiler name"          , default='intel')
@@ -138,6 +166,8 @@ if __name__ == '__main__':
       machine = 'grizzly'
     elif host[0:2] == 'wf':
       machine = 'wolf'
+    elif host[0:2] == 'bl':
+      machine = 'blues'
 
   # Write the submission script
   write_submission_script(machine,
