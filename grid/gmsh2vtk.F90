@@ -3,7 +3,7 @@
       USE globals, ONLY: rp
       USE write_vtk
       USE grid_file_mod, ONLY: grid_type
-      USE read_gmsh, ONLY: read_gmsh_file
+      USE read_write_gmsh, ONLY: read_gmsh_file
 
       TYPE(grid_type) :: mesh
       INTEGER :: i,ne 
