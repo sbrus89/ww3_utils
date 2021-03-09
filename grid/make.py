@@ -1,7 +1,9 @@
 import pprint
 
 targets = {'rotate':['rotate.F90',  'rotate_mod.F90',  'read_write_gmsh.F90',  'globals.F90',  'grid_file_mod.F90'],
-           'rotate_test':['rotate_test.F90','rotate_mod.F90']}
+           'rotate_test':['rotate_test.F90','rotate_mod.F90'],
+           'gmsh2vtk':['gmsh2vtk.F90', 'globals.F90', 'grid_file_mod.F90', 'read_write_gmsh.F90', 'write_vtk.F90'],
+           'clean_mesh':['globals.F90', 'grid_file_mod.F90', 'edge_connectivity_mod.F90', 'fix_elements.F90', 'clean_mesh.F90']}
 FC = 'ifort'
 FFLAGS = '-C -g -traceback'
 LIBRARY_LINKS = ['netcdf','netcdff']
