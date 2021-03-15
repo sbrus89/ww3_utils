@@ -111,9 +111,9 @@
       ! Write new .msh file    
       PRINT*, "Writing .msh file"
       nbeds = 0
-      CALL write_header('./clean.14',grid_name,ne,nn)
-      CALL write_coords(nn,xy,depth)
-      CALL write_connectivity(ne,ect,el_type,nverts)
+      CALL write_header('./clean.14',grid_name,ne,nn_new)
+      CALL write_coords(nn_new,xy_new,depth)
+      CALL write_connectivity(ne,ect_new,el_type,nverts)
       nope = 0
       neta = 0
       CALL write_open_boundaries(nope,neta,obseg,obnds)
