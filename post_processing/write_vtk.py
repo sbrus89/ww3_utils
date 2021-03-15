@@ -3,6 +3,8 @@ import os
 import glob
 import numpy as np
 import netCDF4
+import yaml
+import pprint
 
 ########################################################################
 ########################################################################
@@ -174,10 +176,12 @@ def get_mesh_information(nc_file):
 
 if __name__ == '__main__':
 
-    data_dir = 'model_data/fields/'
-    out_dir = 'waves_vtk'
-    out_prefix = 'waves'
-    variable_list = ['hs','fp','dp']
+    pwd = os.getcwd()
+    
+    # Read config file  
+    f = open(pwd+'/write_vtk.config')
+    cfg = yaml.load(f)
+    pprint.pprint(cfg)
 
-    extract_vtk(data_dir, out_dir, out_prefix, variable_list)
+    extract_vtk(cfg['data_dir'], cfg['out_dir'], cfg['out_prefix'], cfg['variable_list'])
 
