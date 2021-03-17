@@ -1,4 +1,3 @@
-
 from pathlib import Path
 import os
 import numpy as np
@@ -6,10 +5,9 @@ from scipy import interpolate
 import jigsawpy
 import os
 import segment
+from create_jigsaw_coastline_input import create_coastline_geometry
 
 def ex_8():
-
-# DEMO-8: build regional meshes via stereographic projection
 
     pwd = os.getcwd()
     src_path = pwd 
@@ -38,25 +36,21 @@ def ex_8():
 
 #------------------------------------ define JIGSAW geometry
 
-    jigsawpy.loadmsh(
-        str(Path(src_path)/"out.msh"), geom)
-    geom.point["coord"][:,:] *= np.pi/180.
-    jigsawpy.savemsh(opts.geom_file, geom)
+    shpfiles = [ 
+                   "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L1.shp",
+                   "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L6.shp"
+               ]  
 
-    xmin = -180.0
-    xmax = 180.0
-    xlon = np.arange(xmin, xmax, 0.5)
-
-    ymin = -90.0
-    ymax = 90.0
-    ylat = np.arange(ymin, ymax, 0.5)
-
-    print(xlon.size,ylat.size)
+    create_coastline_geometry(shpfiles,opts.geom_file)
     
 #------------------------------------ define spacing pattern
 
     km = 1000.0
     hval = 100.0*km
+
+    xlon = np.arange(-180.0, 180.0, 0.5)
+    ylat = np.arange(-90.0, 90.0, 0.5)
+    print(xlon.size,ylat.size)
 
     hfunction = np.full(
         (ylat.size, xlon.size), hval)
@@ -64,8 +58,8 @@ def ex_8():
     hfun.mshID = "ellipsoid-grid"
     hfun.radii = np.full(3, 6371., 
         dtype=jigsawpy.jigsaw_msh_t.REALS_t)
-    hfun.xgrid = xlon * np.pi / 180.
-    hfun.ygrid = ylat * np.pi / 180.
+    hfun.xgrid = np.radians(xlon)
+    hfun.ygrid = np.radians(ylat)
     
     hfun.value = hfunction.astype(jigsawpy.jigsaw_msh_t.REALS_t)/km
 
