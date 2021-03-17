@@ -1,0 +1,8 @@
+&inputs
+      LON_POLE = -42.8906d0,
+      LAT_POLE = 72.3200d0,
+      wind_file = 'wnd10mx0.5.gdas.200506.ww3.nc',
+      mesh_file = 'global.msh',
+      mesh_file_out = 'global_RTD.msh'
+/
+

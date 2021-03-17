@@ -20,16 +20,28 @@
       REAL(rp), DIMENSION(:), ALLOCATABLE :: lon_nc,lat_nc
       REAL(rp), DIMENSION(:,:,:), ALLOCATABLE :: u_nc,v_nc
       INTEGER :: i,j,k,n
-      CHARACTER (:), ALLOCATABLE :: nc_file
+      CHARACTER (:), ALLOCATABLE :: wind_file
       CHARACTER (:), ALLOCATABLE :: mesh_file
       CHARACTER (:), ALLOCATABLE :: mesh_file_out
       TYPE(grid_type) :: grid
 
+      NAMELIST / inputs / LON_POLE, LAT_POLE, wind_file, mesh_file, mesh_file_out
+
       LON_POLE = -42.8906d0 
       LAT_POLE = 72.3200d0
-      nc_file = 'wnd10mx0.5.gdas.200506.ww3.nc'
+      wind_file = 'wnd10mx0.5.gdas.200506.ww3.nc'
       mesh_file = 'mesh_shallow_4000_edit_mv_nd.msh'
       mesh_file_out = 'mesh_shallow_4000_edit_mv_nd_RTD.msh'
+      
+      OPEN(UNIT=15, FILE='rotate.nml')
+      READ(UNIT=15, NML=inputs)
+      CLOSE(15)
+
+      PRINT*, 'LON_POLE = ',LON_POLE
+      PRINT*, 'LAT_POLE = ',LAT_POLE
+      PRINT*, 'wind_file = ',wind_file
+      PRINT*, 'mesh_file = ',mesh_file
+      PRINT*, 'mesh_file_out = ',mesh_file_out
 
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -82,7 +94,7 @@
       ! Read wind data
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
-      CALL check(NF90_OPEN(nc_file,NF90_WRITE,ncid))      
+      CALL check(NF90_OPEN(wind_file,NF90_WRITE,ncid))      
 
       IF (NF90_INQ_VARID(ncid,'LON_POLE',lon_pole_varid) .eq. NF90_NOERR) THEN
         PRINT*, "Winds already rotated"

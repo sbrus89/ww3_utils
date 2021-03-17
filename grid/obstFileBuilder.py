@@ -13,7 +13,7 @@ freqs = [minfrq*(frqfactor**i) for i in range(1,nfreq + 1)]
 
 # definition of the spatial mesh
 gridname = 'glo_unst'
-mshfile = 'mesh_shallow_4000_edit_mv_nd_add_el.msh'
+mshfile = 'global.msh'
 triMeshSpec = triMeshSpecFromMshFile(mshfile)
 
 # path of the etopo1 bathymetry
