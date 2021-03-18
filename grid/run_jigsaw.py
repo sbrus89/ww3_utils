@@ -6,6 +6,7 @@ import jigsawpy
 import os
 import segment
 from create_jigsaw_coastline_input import create_coastline_geometry
+from create_jigsaw_initial_input import create_initial_points
 
 def ex_8():
 
@@ -18,7 +19,7 @@ def ex_8():
     geom = jigsawpy.jigsaw_msh_t()
     hfun = jigsawpy.jigsaw_msh_t()
     mesh = jigsawpy.jigsaw_msh_t()
-    mesh_edit = jigsawpy.jigsaw_msh_t()
+    init = jigsawpy.jigsaw_msh_t()
 
 #------------------------------------ setup files for JIGSAW
 
@@ -34,11 +35,20 @@ def ex_8():
     opts.mesh_file = \
         str(Path(dst_path)/"mesh.msh") # MESH file
 
+    opts.init_file = \
+        str(Path(dst_path)/"init.msh") # INIT file
+ 
+    opts.verbosity = 2
+
+#------------------------------------ specify JIGSAW initial conditions
+
+    create_initial_points('ocean.WC14to60E2r3.200714_scaled.nc',opts.init_file)
+
 #------------------------------------ define JIGSAW geometry
 
     shpfiles = [ 
                    "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L1.shp",
-                   "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L6.shp"
+                   "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L5.shp"
                ]  
 
     create_coastline_geometry(shpfiles,opts.geom_file)

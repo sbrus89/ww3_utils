@@ -65,7 +65,7 @@ def create_coastline_geometry(shpfiles,outfile,plot_boundaries=False):
   ###############################################
   
   f = open(outfile,'w')
-  f.write('# test\n')
+  f.write('# Coastline geometry\n')
   f.write('MSHID=3;ELLIPSOID-MESH\n')
   f.write('RADII=6371;6371;6371\n')
   f.write('NDIMS=2\n')
