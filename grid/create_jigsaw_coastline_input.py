@@ -30,8 +30,8 @@ def create_coastline_geometry(shpfiles,outfile,plot_boundaries=False):
           lenpts = len(points)
           if lenpts == 0:
             continue
-          print(records[i])
-          print(lenpts)
+          #print(records[i])
+          #print(lenpts)
       
           #if records[i][0] != '81' and records[i][0] != '214':
           #  continue
