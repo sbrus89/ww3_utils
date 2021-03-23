@@ -15,8 +15,10 @@ plt.switch_backend('agg')
 cartopy.config['pre_existing_data_dir'] = \
     os.getenv('CARTOPY_DIR', cartopy.config.get('pre_existing_data_dir'))
 
-depth_threshold = 4000.0
 km = 1000.0
+
+depth_threshold = 2000.0
+distance_threshold = 500.0*km
 maxres = 225.0*km
 
 def cell_widthVsLatLon(lon,lat,ocean_mesh):
@@ -41,14 +43,18 @@ def cell_widthVsLatLon(lon,lat,ocean_mesh):
     idx, = np.where(lonCell > np.pi) 
     lonCell[idx] = lonCell[idx] - 2.0*np.pi
 
+    idx, = np.where(lonCell < -np.pi)
+    lonCell[idx] = lonCell[idx] + 2.0*np.pi
+
     # Interpolate cellWidth onto background grid
     cellWidth = 2.0*np.sqrt(areaCell/np.pi)
-    hfun = interpolate.LinearNDInterpolator((lonCell,latCell),cellWidth)
+    
+    hfun = interpolate.NearestNDInterpolator((lonCell,latCell),cellWidth)
     hfun_interp = hfun(xy_pts)
     hfun_grd = np.reshape(hfun_interp,(nlat,nlon))
 
     # Interpolate bathymetry onto background grid
-    bathy = interpolate.LinearNDInterpolator((lonCell,latCell),bottomDepth)
+    bathy = interpolate.NearestNDInterpolator((lonCell,latCell),bottomDepth)
     bathy_interp = bathy(xy_pts)
     bathy_grd = np.reshape(bathy_interp,(nlat,nlon))
 
@@ -59,8 +65,7 @@ def cell_widthVsLatLon(lon,lat,ocean_mesh):
                ]   
     D = calc_distance.distance_to_shapefile_points(shpfiles,lon,lat,reggrid=True)
 
-    idxx,idxy = np.where((bathy_grd < depth_threshold) & (bathy_grd > 0) & (D < 1000.0))
-    #idxx,idxy = np.where(D < 1000.0)
+    idxx,idxy = np.where((bathy_grd < depth_threshold) & (bathy_grd > 0.0) & (D < distance_threshold))
     cell_width[idxx,idxy] = hfun_grd[idxx,idxy]
 
     

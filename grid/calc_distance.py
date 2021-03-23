@@ -77,7 +77,7 @@ def distance_to_shapefile_points(shpfiles,lon,lat,reggrid=False,nn_search='flann
 
     D = np.reshape(d, Lon.shape)
 
-    return D/km
+    return D
 
 
 

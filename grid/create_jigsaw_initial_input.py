@@ -1,13 +1,14 @@
 from netCDF4 import Dataset
 import numpy as np
 import shapely
+from scipy import interpolate
 from geometric_features import read_feature_collection
 import calc_distance
 
-def create_initial_points(mesh,outfile):
+def create_initial_points(meshfile,lon,lat,hfunction,outfile):
 
   # Open MPAS mesh and get cell variables
-  nc_file = Dataset(mesh,'r')
+  nc_file = Dataset(meshfile,'r')
   lonCell = nc_file.variables['lonCell'][:]
   latCell = nc_file.variables['latCell'][:]
   bottomDepth = nc_file.variables['bottomDepth'][:]
@@ -16,33 +17,14 @@ def create_initial_points(mesh,outfile):
   idx, = np.where(lonCell > np.pi) 
   lonCell[idx] = lonCell[idx] - 2.0*np.pi
 
-  ## Find points inside geojson regions
-  #fileName = 'map'
-  #in_points = []
-  #fc = read_feature_collection('{}.geojson'.format(fileName))
-  #for feature in fc.features:
-  #  shape = shapely.geometry.Polygon(feature['geometry']['coordinates'][0]) 
-  #  for i in range(lonCell.size):
-  #    point = shapely.geometry.Point(np.degrees(lonCell[i]),np.degrees(latCell[i]))
-  #    test = shape.contains(point)
-  #    if (test == True) and (i not in in_points):
-  #      print(i)
-  #      in_points.append(i)
-  #in_points = np.array(in_points)
+  # Interpolate hfunction onto mesh cell centers
+  hfun = interpolate.RegularGridInterpolator((np.radians(lon),np.radians(lat)),hfunction.T)
+  mesh_pts = np.vstack((lonCell,latCell)).T
+  hfun_interp = hfun(mesh_pts)
 
-  shpfiles = [ 
-               "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/c/GSHHS_c_L1.shp",
-               "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/c/GSHHS_c_L6.shp"
-           ]
-  D = calc_distance.distance_to_shapefile_points(shpfiles,lonCell,latCell)
-
-  ## Find points shallower then depth threshold
-  #above_depth, = np.where(bottomDepth < 4000.0)
-  ## Find points that are inside regions and shallower than threshold
-  #idx = np.intersect1d(above_depth,in_points)
-
-  idx, = np.where((bottomDepth < 4000.0) & (D < 1000.0))
-  #idx, = np.where(D < 1000.0)
+  # Find cells in refined region of waves mesh
+  max_res = np.amax(hfunction)
+  idx, = np.where(hfun_interp < 0.5*max_res )
 
   # Get coordinates of points
   lon = lonCell[idx]
