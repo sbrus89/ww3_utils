@@ -19,6 +19,7 @@
       INTEGER, DIMENSION(:,:), ALLOCATABLE :: ect_waves
       INTEGER, DIMENSION(:,:), ALLOCATABLE :: ect_new
       REAL(rp), DIMENSION(:), ALLOCATABLE :: x_waves, y_waves
+      REAL(rp), DIMENSION(:), ALLOCATABLE :: x_new, y_new
       REAL(rp) :: xy(2)
       REAL(rp) :: R
       REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xyz
@@ -26,6 +27,8 @@
       INTEGER :: el, nd
       INTEGER :: i
       INTEGER :: in_flag
+      INTEGER, DIMENSION(:), ALLOCATABLE :: nepn
+      INTEGER, DIMENSION(:), ALLOCATABLE :: new_node_numbers
 
       INTEGER, DIMENSION(:), ALLOCATABLE :: wave_node_in_ocean
       INTEGER, DIMENSION(:), ALLOCATABLE :: wave_elements_keep
@@ -98,6 +101,8 @@ elems:DO el = 1,ne_waves
         ENDDO nds
       ENDDO elems
 
+
+      ! Create new element connectivity table
       ALLOCATE(ect_new(3,ne_new))
       ne_new = 0
       DO el = 1,ne_waves
@@ -110,15 +115,45 @@ elems:DO el = 1,ne_waves
       ENDDO
       PRINT*, ne_waves, ne_new
 
+      ! Find number of elements per node
+      ALLOCATE(nepn(nn_waves))
+      nepn = 0
+      DO el = 1,ne_new
+        DO i = 1,3
+          nd = ect_new(i,el)
+          nepn(nd) = nepn(nd) + 1
+        ENDDO
+      ENDDO
 
-      ALLOCATE(xyz(3,nn_waves))
+      ! Build new coordinate list
+      ALLOCATE(x_new(nn_waves),y_new(nn_waves))
+      ALLOCATE(new_node_numbers(nn_waves))
+      nn_new = 0
+      DO nd = 1,nn_waves 
+        IF (nepn(nd) /= 0) THEN
+          nn_new = nn_new + 1
+          x_new(nn_new) = x_waves(nd)
+          y_new(nn_new) = y_waves(nd)
+          new_node_numbers(nd) = nn_new
+        ENDIF
+      ENDDO
+
+      ! Adjust element connectivity node numbers
+      DO el = 1,ne_new
+        DO i = 1,3
+          ect_new(i,el) = new_node_numbers(ect_new(i,el))
+        ENDDO
+      ENDDO
+
+      ! Convert to Cartesian coordinates for vtk output
+      ALLOCATE(xyz(3,nn_new))
       R = 6371d0
-      DO i = 1,nn_waves
-        xyz(1,i) = R*cos(y_waves(i))*cos(x_waves(i))
-        xyz(2,i) = R*cos(y_waves(i))*sin(x_waves(i))
-        xyz(3,i) = R*sin(y_waves(i))
+      DO i = 1,nn_new
+        xyz(1,i) = R*cos(y_new(i))*cos(x_new(i))
+        xyz(2,i) = R*cos(y_new(i))*sin(x_new(i))
+        xyz(3,i) = R*sin(y_new(i))
       ENDDO
      
-      CALL write_vtk_file('waves_mesh_culled.vtk',nn_waves,xyz,ne_new,ect_new)
+      CALL write_vtk_file('waves_mesh_culled.vtk',nn_new,xyz,ne_new,ect_new)
 
       END PROGRAM cull_waves_mesh
