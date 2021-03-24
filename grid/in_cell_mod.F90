@@ -26,6 +26,7 @@
       TYPE(kdtree2_result), ALLOCATABLE, DIMENSION(:) :: closest
       INTEGER :: srchdp
       REAL(rp), PARAMETER :: tol = 1d-7
+      REAL(rp), PARAMETER :: pi = 4d0*atan(1d0)
 
       CONTAINS
 
@@ -142,7 +143,7 @@
 
       INTEGER :: j
       INTEGER :: n1,n2
-      REAL(rp) :: x1,x2
+      REAL(rp) :: x1,x2,x2x1,x3x1
       REAL(rp) :: y1,y2
 
       total_area = 0d0
@@ -155,8 +156,17 @@
 
         x2 = lonVertex(verticesOnCell(n2,cell))
         y2 = latVertex(verticesOnCell(n2,cell))
+    
+        x2x1 = x2-x1
+        IF (abs(x2x1) > pi) THEN
+          x2x1 = x2x1 - SIGN(2d0*pi,x2x1)
+        ENDIF
+        x3x1 = x3-x1
+        IF (abs(x3x1) > pi) THEN
+          x3x1 = x3x1 - SIGN(2d0*pi,x3x1)
+        ENDIF
         
-        total_area = total_area + 0.5d0*abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+        total_area = total_area + 0.5d0*abs((x2x1)*(y3-y1) - (x3x1)*(y2-y1))
       ENDDO
 
       RETURN
