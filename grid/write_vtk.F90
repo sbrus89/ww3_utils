@@ -38,6 +38,7 @@
       INTEGER :: i,j
       INTEGER :: tbnds
       INTEGER :: snap
+      INTEGER :: R3
 
       open_bou_flag = 0
       IF (PRESENT(nope) .and. PRESENT(obseg) .and. PRESENT(obnds)) THEN
@@ -68,12 +69,25 @@
       WRITE(11,"(A)") "DATASET UNSTRUCTURED_GRID"
       WRITE(tmp1,"(I10)") nn
       WRITE(11,"(A,1x,A,1x,A)") "POINTS", TRIM(ADJUSTL(tmp1)), "double"
+
+      IF (SIZE(xy,1) == 3) THEN
+        R3 = 1
+      ELSE IF (SIZE(xy,1) == 2) THEN
+        R3 = 0
+      ELSE
+        PRINT*, "Incorrect xy size"
+        STOP
+      ENDIF
    
       ! Write point coordinates
+      WRITE(tmp3,"(I4)") 0
       DO i = 1,nn        
         WRITE(tmp1,"(F20.14)") xy(1,i)
         WRITE(tmp2,"(F20.14)") xy(2,i)
-        WRITE(11,"(A,1x,A,1x,I1)") TRIM(ADJUSTL(tmp1)),TRIM(ADJUSTL(tmp2)),0
+        IF (R3 == 1) THEN
+          WRITE(tmp3,"(F20.14)") xy(3,i)
+        ENDIF
+        WRITE(11,"(A,1x,A,1x,A)") TRIM(ADJUSTL(tmp1)),TRIM(ADJUSTL(tmp2)),TRIM(ADJUSTL(tmp3))
       ENDDO
 
 
