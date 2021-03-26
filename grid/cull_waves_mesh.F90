@@ -1,7 +1,7 @@
       PROGRAM cull_waves_mesh
 
       USE netcdf
-      USE in_cell_mod, ONLY: in_cell_init, in_cell, check
+      USE in_cell_mod, ONLY: in_cell_init, in_cell, check, pi
       USE globals, ONLY: rp
       USE write_vtk
 
@@ -88,6 +88,13 @@ elems:DO el = 1,ne_waves
 
           xy(1) = x_waves(nd)
           xy(2) = y_waves(nd)
+
+          IF (xy(2) > 86d0*pi/180d0) THEN
+            wave_node_in_ocean(nd) = 1
+            wave_elements_keep(el) = 1
+            ne_new = ne_new + 1
+            EXIT nds
+          ENDIF
 
           CALL in_cell(xy,in_flag)
 
