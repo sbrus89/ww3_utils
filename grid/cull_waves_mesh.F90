@@ -34,7 +34,7 @@
       INTEGER, DIMENSION(:), ALLOCATABLE :: wave_elements_keep
 
       
-      waves_mesh_file = 'waves_mesh_copy.nc'
+      waves_mesh_file = 'waves_mesh.nc'
 
       CALL check(NF90_OPEN(waves_mesh_file, NF90_NOWRITE, waves_ncid))
       CALL check(NF90_INQ_DIMID(waves_ncid, 'nCells', nCells_dimid))
