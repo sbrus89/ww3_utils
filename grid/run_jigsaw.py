@@ -158,7 +158,7 @@ def ex_8():
                          logger=None),
                          'waves_mesh.nc')
 
-    subprocess.call('./cull_mesh.py --with_critical_passages',shell=True)
+    #subprocess.call('./cull_mesh.py --with_critical_passages',shell=True)
 
     return
 
