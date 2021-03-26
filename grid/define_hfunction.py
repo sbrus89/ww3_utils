@@ -17,8 +17,12 @@ cartopy.config['pre_existing_data_dir'] = \
 
 km = 1000.0
 
-depth_threshold = 2000.0
-distance_threshold = 500.0*km
+depth_threshold_refined = 2000.0
+distance_threshold_refined = 500.0*km
+depth_threshold_global= 1000.0
+distance_threshold_global= 100.0*km
+refined_res = 20*km
+
 maxres = 225.0*km
 
 def cell_widthVsLatLon(lon,lat,ocean_mesh):
@@ -65,7 +69,9 @@ def cell_widthVsLatLon(lon,lat,ocean_mesh):
                ]   
     D = calc_distance.distance_to_shapefile_points(shpfiles,lon,lat,reggrid=True)
 
-    idxx,idxy = np.where((bathy_grd < depth_threshold) & (bathy_grd > 0.0) & (D < distance_threshold))
+    idxx,idxy = np.where((bathy_grd < depth_threshold_refined) & (bathy_grd > 0.0) & (D < distance_threshold_refined) & (hfun_grd < refined_res))
+    cell_width[idxx,idxy] = hfun_grd[idxx,idxy]
+    idxx,idxy = np.where((bathy_grd < depth_threshold_global) & (bathy_grd > 0.0) & (D < distance_threshold_global))
     cell_width[idxx,idxy] = hfun_grd[idxx,idxy]
 
     
