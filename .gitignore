@@ -1,3 +1,9 @@
 *.pyc
 *.swp
+rotate
+rotate_test
+gmsh2vtk
+cull_waves_mesh
+clean_mesh
+odir
 
