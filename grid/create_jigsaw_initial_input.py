@@ -5,13 +5,14 @@ from scipy import interpolate
 from geometric_features import read_feature_collection
 import calc_distance
 
+km = 1000.0
+
 def create_initial_points(meshfile,lon,lat,hfunction,outfile):
 
   # Open MPAS mesh and get cell variables
   nc_file = Dataset(meshfile,'r')
   lonCell = nc_file.variables['lonCell'][:]
   latCell = nc_file.variables['latCell'][:]
-  bottomDepth = nc_file.variables['bottomDepth'][:]
 
   # Transform 0,360 range to -180,180 
   idx, = np.where(lonCell > np.pi) 
@@ -26,6 +27,16 @@ def create_initial_points(meshfile,lon,lat,hfunction,outfile):
   max_res = np.amax(hfunction)
   idx, = np.where(hfun_interp < 0.5*max_res )
 
+  # Find boundary cells
+  nEdgesOnCell = nc_file.variables['nEdgesOnCell'][:]
+  cellsOnCell = nc_file.variables['cellsOnCell'][:]
+  nCellsOnCell = np.count_nonzero(cellsOnCell,axis=1)
+  is_boundary_cell = np.equal(nCellsOnCell,nEdgesOnCell)
+  idx_bnd, = np.where(is_boundary_cell == False)
+
+  # Force inclusion of all boundary cells
+  idx = np.union1d(idx,idx_bnd)
+
   # Get coordinates of points
   lon = lonCell[idx]
   lat = latCell[idx]
@@ -33,17 +44,18 @@ def create_initial_points(meshfile,lon,lat,hfunction,outfile):
 
   # Change to Cartesian coordinates
   x,y,z = calc_distance.lonlat2xyz(lon,lat)
+  x = x/km
+  y = y/km
+  z = z/km
 
-  # Specify that initial points are fixed
-  ID = -1*np.ones(x.shape)
-
+  # Get coordinates and ID into structured array (for use with np.savetxt)
   pt_list = []
   for i in range(npt):
-    pt_list.append((x[i]/1000.0,y[i]/1000.0,z[i]/1000.0,-1))
-
+    pt_list.append((x[i],y[i],z[i],-1))  # ID of -1 specifies that node is fixed
   pt_type = np.dtype({'names':['x','y','z','id'],'formats':[np.float64, np.float64, np.float64, np.int32]})
   pts = np.array(pt_list,dtype=pt_type)
 
+  # Write initial conditions file
   f = open(outfile,'w')
   f.write('# Initial coordinates \n')
   f.write('MSHID=3;EUCLIDEAN-MESH\n')
