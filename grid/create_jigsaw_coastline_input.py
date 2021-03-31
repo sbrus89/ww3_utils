@@ -6,7 +6,7 @@ plt.switch_backend('agg')
 
 
 
-def create_coastline_geometry(shpfiles,outfile,plot_boundaries=False):
+def create_coastline_geometry(shpfiles,outfile,sphere_radius,plot_boundaries=False):
 
   # Initialize 
   pt_list = []
@@ -67,7 +67,7 @@ def create_coastline_geometry(shpfiles,outfile,plot_boundaries=False):
   f = open(outfile,'w')
   f.write('# Coastline geometry\n')
   f.write('MSHID=3;ELLIPSOID-MESH\n')
-  f.write('RADII=6371;6371;6371\n')
+  f.write('RADII='+str(sphere_radius)+';'+str(sphere_radius)+';'+str(sphere_radius)+'\n')
   f.write('NDIMS=2\n')
   npt = len(pt_list)
   f.write('POINT='+str(npt)+'\n')

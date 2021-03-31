@@ -14,9 +14,12 @@ import calc_distance
 from mpas_tools.mesh.creation.jigsaw_to_netcdf import jigsaw_to_netcdf
 from mpas_tools.io import write_netcdf
 from mpas_tools.mesh.conversion import convert
+import yaml
+import pprint
 
+km = 1000.0
 
-def ex_8():
+def waves_mesh(cfg):
 
     pwd = os.getcwd()
     src_path = pwd 
@@ -44,53 +47,47 @@ def ex_8():
 
     opts.init_file = \
         str(Path(dst_path)/"init.msh") # INIT file
- 
-
 
 #------------------------------------ define JIGSAW geometry
  
-    coastlines = False
-    if coastlines:
-
+    if cfg['coastlines']:
       print('Defining coastline geometry')
-      shpfiles = [ 
-                     "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L1.shp",
-                     "/home/sbrus/run/WW3_unstructured/OceanMesh2D/utilities/GSHHS/l/GSHHS_l_L5.shp"
-                 ]  
-
-      create_coastline_geometry(shpfiles,opts.geom_file)
+      create_coastline_geometry(cfg['shpfiles'],opts.geom_file,cfg['sphere_radius'])
     else:
       geom = jigsawpy.jigsaw_msh_t()
       geom.mshID = 'ELLIPSOID-MESH'
-      geom.radii = 6371.0*np.ones(3, float)
+      geom.radii = cfg['sphere_radius']*np.ones(3, float)
       jigsawpy.savemsh(opts.geom_file, geom)      
-      
     
 #------------------------------------ define mesh size function
     
     print('Defining mesh size function')
-    ocean_mesh = 'ocean.WC14to60E2r3.200714_scaled.nc'
-    km = 1000.0
 
     lon_min = -180.0
     lon_max = 180.0
-    dlon = 0.5
+    dlon = cfg['hfun_grid_spacing']
     nlon = int((lon_max-lon_min)/dlon)+1
     lat_min = -90.0
     lat_max = 90.0
     nlat = int((lat_max-lat_min)/dlon)+1
-    dlat = 0.5
-
-    
+    dlat = cfg['hfun_grid_spacing']
    
     xlon = np.linspace(lon_min,lon_max,nlon)
     ylat = np.linspace(lat_min,lat_max,nlat)
-    print(xlon.size,ylat.size)
+    print('   hfun grid dimensions: {}, {}'.format(xlon.size,ylat.size))
 
-    hfunction = define_hfunction.cell_widthVsLatLon(xlon,ylat,ocean_mesh)
+    define_hfunction.depth_threshold_refined = cfg['depth_threshold_refined']
+    define_hfunction.distance_threshold_refined = cfg['distance_threshold_refined']
+    define_hfunction.depth_threshold_global = cfg['depth_threshold_global']
+    define_hfunction.distance_threshold_global = cfg['distance_threshold_global']
+    define_hfunction.refined_res = cfg['refined_res']
+    define_hfunction.maxres = cfg['maxres']
+
+    hfunction = define_hfunction.cell_widthVsLatLon(xlon,ylat,cfg['shpfiles'],cfg['sphere_radius'],cfg['ocean_mesh'])
+    hfunction = hfunction/km
 
     hfun.mshID = "ellipsoid-grid"
-    hfun.radii = np.full(3, 6371.0, 
+    hfun.radii = np.full(3, cfg['sphere_radius'], 
         dtype=jigsawpy.jigsaw_msh_t.REALS_t)
     hfun.xgrid = np.radians(xlon)
     hfun.ygrid = np.radians(ylat)
@@ -100,17 +97,16 @@ def ex_8():
 #------------------------------------ specify JIGSAW initial conditions
 
     print('Specifying initial fixed coordinate locations')
-    create_initial_points(ocean_mesh,xlon,ylat,hfunction,opts.init_file)
+    create_initial_points(cfg['ocean_mesh'],xlon,ylat,hfunction,cfg['sphere_radius'],opts.init_file)
     jigsawpy.loadmsh(opts.init_file,init)
     jigsawpy.savevtk(str(Path(dst_path)/"init.vtk"), init)
 
 #------------------------------------ set HFUN grad.-limiter
 
     print('Limiting mesh size function gradients')
-    slope = 0.15
     hfun.slope = np.full(               # |dH/dx| limits
         hfun.value.shape,
-        slope, dtype=hfun.REALS_t)
+        cfg['hfun_slope_lim'], dtype=hfun.REALS_t)
 
     jigsawpy.savemsh(opts.hfun_file, hfun)
 
@@ -134,7 +130,7 @@ def ex_8():
 
     #jigsawpy.cmd.tetris(opts, 3, mesh)
     jigsawpy.cmd.jigsaw(opts, mesh)
-    if coastlines:
+    if cfg['coastlines']:
       segment.segment(mesh)
 
 #------------------------------------ save mesh for Paraview
@@ -150,14 +146,16 @@ def ex_8():
     jigsawpy.savemsh(
         str(Path(dst_path)/"waves_mesh.msh"), mesh)
 
+#------------------------------------ convert mesh to MPAS format
+
     jigsaw_to_netcdf(msh_filename='waves_mesh.msh',
                      output_name='waves_mesh_triangles.nc', on_sphere=True,
-                     sphere_radius=6371.0)
+                     sphere_radius=cfg['sphere_radius'])
     write_netcdf(convert(xarray.open_dataset('waves_mesh_triangles.nc'), dir='./',
                          logger=None),
                          'waves_mesh.nc')
 
-    #subprocess.call('./cull_mesh.py --with_critical_passages',shell=True)
+#------------------------------------ cull mesh to ocean bounary
 
     if os.path.exists('./cull_waves_mesh'):
       subprocess.call('./cull_waves_mesh',shell=True)
@@ -165,7 +163,15 @@ def ex_8():
     return
 
 
-if (__name__ == "__main__"): ex_8()
+if (__name__ == "__main__"): 
+
+
+    pwd = os.getcwd()
+    f = open(pwd+'/run_jigsaw.config')
+    cfg = yaml.load(f,yaml.Loader)
+    pprint.pprint(cfg)
+    
+    waves_mesh(cfg)
 
 
 

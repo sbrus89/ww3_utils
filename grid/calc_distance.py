@@ -6,7 +6,7 @@ import timeit
 
 km = 1000.0
 
-def distance_to_shapefile_points(shpfiles,lon,lat,reggrid=False,nn_search='flann'):
+def distance_to_shapefile_points(shpfiles,lon,lat,sphere_radius,reggrid=False,nn_search='flann'):
 
 
     # Get coastline coordinates from shapefile
@@ -34,7 +34,7 @@ def distance_to_shapefile_points(shpfiles,lon,lat,reggrid=False,nn_search='flann
     # Convert coastline points to x,y,z and create kd-tree
     npts = coast_pts.shape[0]
     coast_pts_xyz = np.zeros((npts,3))
-    coast_pts_xyz[:, 0], coast_pts_xyz[:, 1], coast_pts_xyz[:, 2] = lonlat2xyz(coast_pts[:, 0], coast_pts[:, 1])
+    coast_pts_xyz[:, 0], coast_pts_xyz[:, 1], coast_pts_xyz[:, 2] = lonlat2xyz(coast_pts[:, 0], coast_pts[:, 1], sphere_radius)
     if nn_search == "kdtree":
         tree = spatial.KDTree(coast_pts_xyz)
     elif nn_search == "flann":
@@ -45,6 +45,7 @@ def distance_to_shapefile_points(shpfiles,lon,lat,reggrid=False,nn_search='flann
             target_precision=1.0,
             random_seed=0)
 
+    # Make sure longitude and latitude are in radians
     if np.amax(lon) < 2.1*np.pi:
       lonr = lon
       latr = lat
@@ -59,7 +60,7 @@ def distance_to_shapefile_points(shpfiles,lon,lat,reggrid=False,nn_search='flann
     else:
       Lon = lonr
       Lat = latr
-    X, Y, Z = lonlat2xyz(Lon,Lat)
+    X, Y, Z = lonlat2xyz(Lon,Lat,sphere_radius)
     pts = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
 
 
@@ -81,9 +82,8 @@ def distance_to_shapefile_points(shpfiles,lon,lat,reggrid=False,nn_search='flann
 
 
 
-def lonlat2xyz(lon,lat):
+def lonlat2xyz(lon,lat,R=6371.0*km):
 
-    R = 6371.0*km
     x = R*np.multiply(np.cos(lon),np.cos(lat))
     y = R*np.multiply(np.sin(lon),np.cos(lat))
     z = R*np.sin(lat)

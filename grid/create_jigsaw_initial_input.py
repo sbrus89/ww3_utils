@@ -1,13 +1,11 @@
 from netCDF4 import Dataset
 import numpy as np
-import shapely
 from scipy import interpolate
-from geometric_features import read_feature_collection
 import calc_distance
 
 km = 1000.0
 
-def create_initial_points(meshfile,lon,lat,hfunction,outfile):
+def create_initial_points(meshfile,lon,lat,hfunction,sphere_radius,outfile):
 
   # Open MPAS mesh and get cell variables
   nc_file = Dataset(meshfile,'r')
@@ -43,10 +41,7 @@ def create_initial_points(meshfile,lon,lat,hfunction,outfile):
   npt = idx.size
 
   # Change to Cartesian coordinates
-  x,y,z = calc_distance.lonlat2xyz(lon,lat)
-  x = x/km
-  y = y/km
-  z = z/km
+  x,y,z = calc_distance.lonlat2xyz(lon,lat,sphere_radius)
 
   # Get coordinates and ID into structured array (for use with np.savetxt)
   pt_list = []
