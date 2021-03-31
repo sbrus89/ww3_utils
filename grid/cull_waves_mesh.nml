@@ -1,0 +1,8 @@
+&inputs
+      waves_mesh_file = 'waves_mesh.nc'
+      ocean_mesh_file = 'ocean.WC14to60E2r3.200714_scaled.nc'
+/
+&output
+      waves_mesh_culled_vtk = 'waves_mesh_culled.vtk'
+/
+

@@ -11,8 +11,9 @@
       INTEGER :: nCells_dimid, nVertices_dimid
       INTEGER :: cellsOnVertex_varid, lonCell_varid, latCell_varid
 
-      CHARACTER(:), ALLOCATABLE :: waves_mesh_file
-      CHARACTER(:), ALLOCATABLE :: ocean_mesh_file
+      CHARACTER(100) :: waves_mesh_file
+      CHARACTER(100) :: waves_mesh_culled_vtk
+      CHARACTER(100) :: ocean_mesh_file
 
       INTEGER :: ne_waves, nn_waves
       INTEGER :: ne_new, nn_new
@@ -33,10 +34,18 @@
       INTEGER, DIMENSION(:), ALLOCATABLE :: wave_node_in_ocean
       INTEGER, DIMENSION(:), ALLOCATABLE :: wave_elements_keep
 
-      
-      waves_mesh_file = 'waves_mesh.nc'
-
-      CALL check(NF90_OPEN(waves_mesh_file, NF90_NOWRITE, waves_ncid))
+      NAMELIST / inputs / waves_mesh_file, ocean_mesh_file
+      NAMELIST / output / waves_mesh_culled_vtk
+ 
+      OPEN(UNIT=15, FILE='cull_waves_mesh.nml')
+      READ(UNIT=15, NML=inputs)
+      READ(UNIT=15, NML=output)
+      CLOSE(15)
+ 
+      PRINT*, 'waves_mesh_file = ', TRIM(ADJUSTL(waves_mesh_file))
+      PRINT*, 'ocean_mesh_file = ', TRIM(ADJUSTL(ocean_mesh_file))
+      PRINT*, 'waves_mesh_file = ', TRIM(ADJUSTL(waves_mesh_culled_vtk))
+      CALL check(NF90_OPEN(TRIM(ADJUSTL(waves_mesh_file)), NF90_NOWRITE, waves_ncid)) 
       CALL check(NF90_INQ_DIMID(waves_ncid, 'nCells', nCells_dimid))
       CALL check(NF90_INQ_DIMID(waves_ncid, 'nVertices', nVertices_dimid))
 
@@ -55,8 +64,7 @@
       CALL check(NF90_CLOSE(waves_ncid))
 
       
-      ocean_mesh_file = 'ocean.WC14to60E2r3.200714_scaled.nc'
-      CALL in_cell_init(ocean_mesh_file)
+      CALL in_cell_init(TRIM(ADJUSTL(ocean_mesh_file)))
 
 
       ALLOCATE(wave_node_in_ocean(nn_waves))
@@ -161,6 +169,6 @@ elems:DO el = 1,ne_waves
         xyz(3,i) = R*sin(y_new(i))
       ENDDO
      
-      CALL write_vtk_file('waves_mesh_culled.vtk',nn_new,xyz,ne_new,ect_new)
+      CALL write_vtk_file(TRIM(ADJUSTL(waves_mesh_culled_vtk)),nn_new,xyz,ne_new,ect_new)
 
       END PROGRAM cull_waves_mesh

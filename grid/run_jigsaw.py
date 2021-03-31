@@ -158,6 +158,16 @@ def waves_mesh(cfg):
 #------------------------------------ cull mesh to ocean bounary
 
     if os.path.exists('./cull_waves_mesh'):
+      f = open('cull_waves_mesh.nml','w')
+      f.write('&inputs\n')
+      f.write("    waves_mesh_file = 'waves_mesh.nc'\n")
+      f.write("    ocean_mesh_file = '"+cfg['ocean_mesh']+"'\n")
+      f.write("/\n")
+      f.write('&output\n')
+      f.write("    waves_mesh_culled_vtk = 'waves_mesh_culled.vtk'\n")
+      f.write("/\n")
+      f.close()
+     
       subprocess.call('./cull_waves_mesh',shell=True)
 
     return
