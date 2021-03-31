@@ -107,8 +107,7 @@ def ex_8():
 #------------------------------------ set HFUN grad.-limiter
 
     print('Limiting mesh size function gradients')
-    #slope = 0.05
-    slope = 0.1
+    slope = 0.15
     hfun.slope = np.full(               # |dH/dx| limits
         hfun.value.shape,
         slope, dtype=hfun.REALS_t)
@@ -159,6 +158,9 @@ def ex_8():
                          'waves_mesh.nc')
 
     #subprocess.call('./cull_mesh.py --with_critical_passages',shell=True)
+
+    if os.path.exists('./cull_waves_mesh'):
+      subprocess.call('./cull_waves_mesh',shell=True)
 
     return
 

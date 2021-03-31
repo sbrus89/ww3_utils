@@ -17,8 +17,8 @@ cartopy.config['pre_existing_data_dir'] = \
 
 km = 1000.0
 
-depth_threshold_refined = 2000.0
-distance_threshold_refined = 500.0*km
+depth_threshold_refined = 1000.0
+distance_threshold_refined = 300.0*km
 depth_threshold_global= 1000.0
 distance_threshold_global= 100.0*km
 refined_res = 20*km
