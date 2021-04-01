@@ -11,6 +11,7 @@ def create_initial_points(meshfile,lon,lat,hfunction,sphere_radius,outfile):
   nc_file = Dataset(meshfile,'r')
   lonCell = nc_file.variables['lonCell'][:]
   latCell = nc_file.variables['latCell'][:]
+  nCells = lonCell.shape[0]
 
   # Transform 0,360 range to -180,180 
   idx, = np.where(lonCell > np.pi) 
@@ -28,6 +29,10 @@ def create_initial_points(meshfile,lon,lat,hfunction,sphere_radius,outfile):
   # Find boundary cells
   nEdgesOnCell = nc_file.variables['nEdgesOnCell'][:]
   cellsOnCell = nc_file.variables['cellsOnCell'][:]
+  nz = np.zeros(cellsOnCell.shape,dtype=bool)             # some meshes have non-zero values
+  for i in range(nCells):                                 # in the extra columns of cellsOnCell
+    nz[i,0:nEdgesOnCell[i]] = True                        # in this case, these must be zeroed out
+  cellsOnCell[~nz] = 0                                    # to correctly identify boundary cells
   nCellsOnCell = np.count_nonzero(cellsOnCell,axis=1)
   is_boundary_cell = np.equal(nCellsOnCell,nEdgesOnCell)
   idx_bnd, = np.where(is_boundary_cell == False)
