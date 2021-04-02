@@ -4,6 +4,7 @@
       USE in_cell_mod, ONLY: in_cell_init, pt_in_cell, check, pi
       USE globals, ONLY: rp
       USE write_vtk
+      USE read_write_gmsh
 
       IMPLICIT NONE
 
@@ -15,6 +16,7 @@
 
       CHARACTER(100) :: waves_mesh_file
       CHARACTER(100) :: waves_mesh_culled_vtk
+      CHARACTER(100) :: waves_mesh_culled_gmsh
       CHARACTER(100) :: ocean_mesh_file
 
       INTEGER :: ne_waves, nn_waves
@@ -28,6 +30,7 @@
       REAL(rp) :: xy(2)
       REAL(rp) :: R
       REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xyz
+      REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xy_new
 
       INTEGER :: ncells_ocean
       REAL(rp), DIMENSION(:), ALLOCATABLE :: depth_ocean
@@ -42,7 +45,7 @@
       INTEGER, DIMENSION(:), ALLOCATABLE :: wave_elements_keep
 
       NAMELIST / inputs / waves_mesh_file, ocean_mesh_file
-      NAMELIST / output / waves_mesh_culled_vtk
+      NAMELIST / output / waves_mesh_culled_vtk, waves_mesh_culled_gmsh
  
       OPEN(UNIT=15, FILE='cull_waves_mesh.nml')
       READ(UNIT=15, NML=inputs)
@@ -51,7 +54,8 @@
  
       PRINT*, 'waves_mesh_file = ', TRIM(ADJUSTL(waves_mesh_file))
       PRINT*, 'ocean_mesh_file = ', TRIM(ADJUSTL(ocean_mesh_file))
-      PRINT*, 'waves_mesh_file = ', TRIM(ADJUSTL(waves_mesh_culled_vtk))
+      PRINT*, 'waves_mesh_file_vtk = ', TRIM(ADJUSTL(waves_mesh_culled_vtk))
+      PRINT*, 'waves_mesh_file_gmsh = ', TRIM(ADJUSTL(waves_mesh_culled_gmsh))
       CALL check(NF90_OPEN(TRIM(ADJUSTL(waves_mesh_file)), NF90_NOWRITE, waves_ncid)) 
       CALL check(NF90_INQ_DIMID(waves_ncid, 'nCells', nCells_dimid))
       CALL check(NF90_INQ_DIMID(waves_ncid, 'nVertices', nVertices_dimid))
@@ -183,13 +187,20 @@ elems:DO el = 1,ne_waves
 
       ! Convert to Cartesian coordinates for vtk output
       ALLOCATE(xyz(3,nn_new))
+      ALLOCATE(xy_new(2,nn_new))
       R = 6371d0
       DO i = 1,nn_new
         xyz(1,i) = R*cos(y_new(i))*cos(x_new(i))
         xyz(2,i) = R*cos(y_new(i))*sin(x_new(i))
         xyz(3,i) = R*sin(y_new(i))
+        xy_new(1,i) = x_new(i)
+        xy_new(2,i) = y_new(i)
       ENDDO
      
       CALL write_vtk_file(TRIM(ADJUSTL(waves_mesh_culled_vtk)),nn_new,xyz,ne_new,ect_new,depth_new)
+
+      CALL write_header(TRIM(ADJUSTL(waves_mesh_culled_gmsh)))
+      CALL write_nodes(nn_new,xy_new,depth_new)
+      CALL write_elements(ne_new,ect_new)
 
       END PROGRAM cull_waves_mesh

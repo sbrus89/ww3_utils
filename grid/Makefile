@@ -1,6 +1,5 @@
 FC := ifort
 FFLAGS := -O3
-#FFLAGS := -C -g -traceback
 LIB := -L/blues/gpfs/software/centos7/spack-latest/opt/spack/linux-centos7-x86_64/intel-17.0.0/netcdf-fortran-4.4.4-urmb6ss/libs -lnetcdf -lnetcdff
 INC := -I/blues/gpfs/software/centos7/spack-latest/opt/spack/linux-centos7-x86_64/intel-17.0.0/netcdf-fortran-4.4.4-urmb6ss/include
 
@@ -14,7 +13,7 @@ INC += -I$(ODIR)
 rotate_objects =  rotate.o rotate_mod.o read_write_gmsh.o globals.o grid_file_mod.o
 rotate_test_objects =  rotate_test.o rotate_mod.o
 gmsh2vtk_objects =  gmsh2vtk.o globals.o grid_file_mod.o read_write_gmsh.o write_vtk.o
-cull_waves_mesh_objects =  cull_waves_mesh.o kdtree2.o in_cell_mod.o write_vtk.o
+cull_waves_mesh_objects =  cull_waves_mesh.o kdtree2.o in_cell_mod.o write_vtk.o read_write_gmsh.o
 clean_mesh_objects =  globals.o grid_file_mod.o edge_connectivity_mod.o fix_elements.o clean_mesh.o
 
 rotate_obj = $(patsubst %.o, $(ODIR)%.o, $(rotate_objects))
@@ -85,7 +84,7 @@ $(ODIR)write_vtk.o : write_vtk.F90 $(ODIR)globals.o
 	$(FC) $(FFLAGS) $(INC) -c $< -o $@
 	mv write_vtk.mod $(ODIR)
 
-$(ODIR)cull_waves_mesh.o : cull_waves_mesh.F90 $(ODIR)in_cell_mod.o $(ODIR)globals.o $(ODIR)write_vtk.o
+$(ODIR)cull_waves_mesh.o : cull_waves_mesh.F90 $(ODIR)in_cell_mod.o $(ODIR)globals.o $(ODIR)write_vtk.o $(ODIR)read_write_gmsh.o
 	$(FC) $(FFLAGS) $(INC) -c $< -o $@
 
 $(ODIR)kdtree2.o : kdtree2.F90

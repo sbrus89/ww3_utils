@@ -165,6 +165,7 @@ def waves_mesh(cfg):
       f.write("/\n")
       f.write('&output\n')
       f.write("    waves_mesh_culled_vtk = 'waves_mesh_culled.vtk'\n")
+      f.write("    waves_mesh_culled_gmsh = 'waves_mesh_culled.msh'\n")
       f.write("/\n")
       f.close()
      

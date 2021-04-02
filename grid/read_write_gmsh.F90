@@ -172,7 +172,7 @@
 
      INTEGER, INTENT(IN) :: ne
      INTEGER, DIMENSION(:,:), INTENT(IN) :: ect
-     INTEGER, DIMENSION(:), INTENT(IN) :: el_type
+     INTEGER, DIMENSION(:), INTENT(IN), OPTIONAL :: el_type
    
      INTEGER :: i,j
 
