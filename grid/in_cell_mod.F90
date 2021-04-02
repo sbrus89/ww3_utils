@@ -101,12 +101,12 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      SUBROUTINE in_cell(xy,in_flag)
+      SUBROUTINE pt_in_cell(xy,in_cell)
 
       IMPLICIT NONE
 
       REAL(rp), INTENT(IN) :: xy(2)
-      INTEGER, INTENT(OUT) :: in_flag
+      INTEGER, INTENT(OUT) :: in_cell
 
       INTEGER :: i
       INTEGER :: cell
@@ -114,20 +114,21 @@
 
       CALL kdtree2_n_nearest(tp=tree_xy,qv=xy,nn=srchdp,results=closest)
 
-      in_flag = 0
-      DO i = 1,srchdp
+      in_cell = 0
+srch: DO i = 1,srchdp
 
         cell = closest(i)%idx
         CALL compute_total_area(cell,xy(1),xy(2),area_sum)
 
         IF (abs(area_sum-area(cell)) < tol) THEN
-          in_flag = 1
+          in_cell = cell
+          EXIT srch
         ENDIF
 
-      ENDDO
+      ENDDO srch
 
       RETURN
-      END SUBROUTINE in_cell
+      END SUBROUTINE pt_in_cell
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -1,15 +1,17 @@
       PROGRAM cull_waves_mesh
 
       USE netcdf
-      USE in_cell_mod, ONLY: in_cell_init, in_cell, check, pi
+      USE in_cell_mod, ONLY: in_cell_init, pt_in_cell, check, pi
       USE globals, ONLY: rp
       USE write_vtk
 
       IMPLICIT NONE
 
       INTEGER :: waves_ncid
+      INTEGER :: ocean_ncid
       INTEGER :: nCells_dimid, nVertices_dimid
       INTEGER :: cellsOnVertex_varid, lonCell_varid, latCell_varid
+      INTEGER :: bottomDepth_varid
 
       CHARACTER(100) :: waves_mesh_file
       CHARACTER(100) :: waves_mesh_culled_vtk
@@ -21,13 +23,18 @@
       INTEGER, DIMENSION(:,:), ALLOCATABLE :: ect_new
       REAL(rp), DIMENSION(:), ALLOCATABLE :: x_waves, y_waves
       REAL(rp), DIMENSION(:), ALLOCATABLE :: x_new, y_new
+      REAL(rp), DIMENSION(:), ALLOCATABLE :: depth_waves
+      REAL(rp), DIMENSION(:), ALLOCATABLE :: depth_new
       REAL(rp) :: xy(2)
       REAL(rp) :: R
       REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xyz
 
+      INTEGER :: ncells_ocean
+      REAL(rp), DIMENSION(:), ALLOCATABLE :: depth_ocean
+
       INTEGER :: el, nd
       INTEGER :: i
-      INTEGER :: in_flag
+      INTEGER :: in_cell
       INTEGER, DIMENSION(:), ALLOCATABLE :: nepn
       INTEGER, DIMENSION(:), ALLOCATABLE :: new_node_numbers
 
@@ -63,6 +70,15 @@
       CALL check(NF90_GET_VAR(waves_ncid, cellsOnVertex_varid, ect_waves))
       CALL check(NF90_CLOSE(waves_ncid))
 
+      CALL check(NF90_OPEN(ocean_mesh_file, NF90_NOWRITE, ocean_ncid))
+      CALL check(NF90_INQ_DIMID(ocean_ncid, 'nCells', nCells_dimid))
+      CALL check(NF90_INQUIRE_DIMENSION(ocean_ncid, nCells_dimid, len=ncells_ocean))
+      CALL check(NF90_INQ_VARID(ocean_ncid, 'bottomDepth', bottomDepth_varid))
+      ALLOCATE(depth_ocean(ncells_ocean))
+      CALL check(NF90_GET_VAR(ocean_ncid, bottomDepth_varid, depth_ocean))
+      CALL check(NF90_CLOSE(ocean_ncid))
+
+
       
       CALL in_cell_init(TRIM(ADJUSTL(ocean_mesh_file)))
 
@@ -71,6 +87,8 @@
       wave_node_in_ocean = 0
       ALLOCATE(wave_elements_keep(ne_waves))
       wave_elements_keep = 0
+      ALLOCATE(depth_waves(nn_waves))
+      depth_waves = -10d0
 
       ne_new = 0
 elems:DO el = 1,ne_waves
@@ -104,11 +122,12 @@ elems:DO el = 1,ne_waves
             EXIT nds
           ENDIF
 
-          CALL in_cell(xy,in_flag)
+          CALL pt_in_cell(xy,in_cell)
 
-          IF (in_flag == 1) THEN
+          IF (in_cell > 0) THEN
             wave_node_in_ocean(nd) = 1
             wave_elements_keep(el) = 1
+            depth_waves(nd) = depth_ocean(in_cell)
             ne_new = ne_new + 1
             EXIT nds
           ENDIF    
@@ -142,6 +161,7 @@ elems:DO el = 1,ne_waves
 
       ! Build new coordinate list
       ALLOCATE(x_new(nn_waves),y_new(nn_waves))
+      ALLOCATE(depth_new(nn_waves))
       ALLOCATE(new_node_numbers(nn_waves))
       nn_new = 0
       DO nd = 1,nn_waves 
@@ -149,6 +169,7 @@ elems:DO el = 1,ne_waves
           nn_new = nn_new + 1
           x_new(nn_new) = x_waves(nd)
           y_new(nn_new) = y_waves(nd)
+          depth_new(nn_new) = depth_waves(nd)
           new_node_numbers(nd) = nn_new
         ENDIF
       ENDDO
@@ -169,6 +190,6 @@ elems:DO el = 1,ne_waves
         xyz(3,i) = R*sin(y_new(i))
       ENDDO
      
-      CALL write_vtk_file(TRIM(ADJUSTL(waves_mesh_culled_vtk)),nn_new,xyz,ne_new,ect_new)
+      CALL write_vtk_file(TRIM(ADJUSTL(waves_mesh_culled_vtk)),nn_new,xyz,ne_new,ect_new,depth_new)
 
       END PROGRAM cull_waves_mesh
