@@ -18,6 +18,7 @@
       INTEGER, DIMENSION(:), ALLOCATABLE :: nEdgesOnCell
       REAL(rp), DIMENSION(:), ALLOCATABLE :: lonCell, latCell
       REAL(rp), DIMENSION(:), ALLOCATABLE :: lonVertex, latVertex
+      REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xyzCell 
 
       REAL(rp), DIMENSION(:,:), ALLOCATABLE :: lonlatCells
       REAL(rp), DIMENSION(:), ALLOCATABLE :: area
@@ -25,8 +26,9 @@
       TYPE(kdtree2), POINTER :: tree_xy
       TYPE(kdtree2_result), ALLOCATABLE, DIMENSION(:) :: closest
       INTEGER :: srchdp
-      REAL(rp), PARAMETER :: tol = 1d-7
+      REAL(rp), PARAMETER :: tol = 1d-12
       REAL(rp), PARAMETER :: pi = 4d0*atan(1d0)
+      REAL(rp), PARAMETER :: R = 6371d0
 
       CONTAINS
 
@@ -80,12 +82,11 @@
       ! Initialize kd-tree based on ocean cell centers
       srchdp = 20
       ALLOCATE(closest(srchdp))
-      ALLOCATE(lonlatCells(2,nCells))
+      ALLOCATE(xyzCell(3,nCells))
       DO i = 1,nCells
-        lonlatCells(1,i) = lonCell(i)
-        lonlatCells(2,i) = latCell(i)
+        CALL lonlat2xyz(lonCell(i),latCell(i),R,xyzCell(1,i),xyzCell(2,i),xyzCell(3,i))
       ENDDO
-      tree_xy => kdtree2_create(lonlatCells(1:2,1:nCells), rearrange=.true., sort=.true.)
+      tree_xy => kdtree2_create(xyzCell(1:3,1:nCells), rearrange=.true., sort=.true.)
 
       ! Compute ocean cell areas
       ALLOCATE(area(nCells))
@@ -101,24 +102,27 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      SUBROUTINE pt_in_cell(xy,in_cell)
+      SUBROUTINE pt_in_cell(lonlat,in_cell)
 
       IMPLICIT NONE
 
-      REAL(rp), INTENT(IN) :: xy(2)
+      REAL(rp), INTENT(IN) :: lonlat(2)
       INTEGER, INTENT(OUT) :: in_cell
 
       INTEGER :: i
       INTEGER :: cell
       REAL(rp) :: area_sum
+      REAL(rp) :: xyz(3)
 
-      CALL kdtree2_n_nearest(tp=tree_xy,qv=xy,nn=srchdp,results=closest)
+      CALL lonlat2xyz(lonlat(1),lonlat(2),R,xyz(1),xyz(2),xyz(3))
+
+      CALL kdtree2_n_nearest(tp=tree_xy,qv=xyz,nn=srchdp,results=closest)
 
       in_cell = 0
 srch: DO i = 1,srchdp
 
         cell = closest(i)%idx
-        CALL compute_total_area(cell,xy(1),xy(2),area_sum)
+        CALL compute_total_area(cell,lonlat(1),lonlat(2),area_sum)
 
         IF (abs(area_sum-area(cell)) < tol) THEN
           in_cell = cell
@@ -189,5 +193,25 @@ srch: DO i = 1,srchdp
 
       RETURN
       END SUBROUTINE check
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      SUBROUTINE lonlat2xyz(lon,lat,R,x,y,z)
+
+      IMPLICIT NONE
+
+      REAL(rp), INTENT(IN) :: lon, lat, R
+      REAL(rp), INTENT(OUT) :: x, y, z
+
+      x = R*cos(lat)*cos(lon)
+      y = R*cos(lat)*sin(lon)
+      z = R*sin(lat)
+
+      RETURN
+      END SUBROUTINE lonlat2xyz
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       END MODULE in_cell_mod

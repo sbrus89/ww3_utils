@@ -1,7 +1,7 @@
       PROGRAM cull_waves_mesh
 
       USE netcdf
-      USE in_cell_mod, ONLY: in_cell_init, pt_in_cell, check, pi
+      USE in_cell_mod, ONLY: in_cell_init, pt_in_cell, check, pi, lonlat2xyz, R
       USE globals, ONLY: rp
       USE write_vtk
       USE read_write_gmsh
@@ -28,7 +28,6 @@
       REAL(rp), DIMENSION(:), ALLOCATABLE :: depth_waves
       REAL(rp), DIMENSION(:), ALLOCATABLE :: depth_new
       REAL(rp) :: xy(2)
-      REAL(rp) :: R
       REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xyz
       REAL(rp), DIMENSION(:,:), ALLOCATABLE :: xy_new
 
@@ -119,21 +118,15 @@ elems:DO el = 1,ne_waves
           xy(1) = x_waves(nd)
           xy(2) = y_waves(nd)
 
-          IF (xy(2) > 86d0*pi/180d0) THEN
-            wave_node_in_ocean(nd) = 1
-            wave_elements_keep(el) = 1
-            ne_new = ne_new + 1
-            EXIT nds
-          ENDIF
-
           CALL pt_in_cell(xy,in_cell)
 
           IF (in_cell > 0) THEN
             wave_node_in_ocean(nd) = 1
-            wave_elements_keep(el) = 1
             depth_waves(nd) = depth_ocean(in_cell)
-            ne_new = ne_new + 1
-            EXIT nds
+            IF (wave_elements_keep(el) == 0) THEN
+              wave_elements_keep(el) = 1
+              ne_new = ne_new + 1
+            ENDIF
           ENDIF    
 
         ENDDO nds
@@ -188,11 +181,8 @@ elems:DO el = 1,ne_waves
       ! Convert to Cartesian coordinates for vtk output
       ALLOCATE(xyz(3,nn_new))
       ALLOCATE(xy_new(2,nn_new))
-      R = 6371d0
       DO i = 1,nn_new
-        xyz(1,i) = R*cos(y_new(i))*cos(x_new(i))
-        xyz(2,i) = R*cos(y_new(i))*sin(x_new(i))
-        xyz(3,i) = R*sin(y_new(i))
+        CALL lonlat2xyz(x_new(i),y_new(i),R,xyz(1,i),xyz(2,i),xyz(3,i))
         xy_new(1,i) = x_new(i)
         xy_new(2,i) = y_new(i)
       ENDDO
