@@ -144,7 +144,9 @@ elems:DO el = 1,ne_waves
           ENDDO
         ENDIF
       ENDDO
-      PRINT*, ne_waves, ne_new
+      PRINT*, ""
+      PRINT*, "Elements in original waves mesh: ", ne_waves
+      PRINT*, "Elements in culled waves mesh:", ne_new
 
       ! Find number of elements per node
       ALLOCATE(nepn(nn_waves))
@@ -170,6 +172,8 @@ elems:DO el = 1,ne_waves
           new_node_numbers(nd) = nn_new
         ENDIF
       ENDDO
+      PRINT*, "Nodes in original waves mesh: ", nn_waves
+      PRINT*, "Nodes in culled waves mesh:", nn_new
 
       ! Adjust element connectivity node numbers
       DO el = 1,ne_new
