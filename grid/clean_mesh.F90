@@ -54,6 +54,7 @@
       INTEGER :: nfill_elements
       INTEGER, DIMENSION(:,:), ALLOCATABLE :: fill_elements
       INTEGER, DIMENSION(:), ALLOCATABLE :: keep_element
+      INTEGER, DIMENSION(:), ALLOCATABLE :: nd_flag
       
       
       ! Read in .msh file
@@ -79,7 +80,7 @@
         PRINT*, "Fixing bad element connectivity"
         CALL flag_problem_elements(ne,ect,nepn,el2el,keep_element)
         CALL flag_isolated_element_patches(ne,el2el,keep_element) 
-        CALL fix_single_node_connections_across_islands(nn,nbnd,bndn,nbed,bedn,nepn,epn,ged2nn,keep_element)
+        CALL fix_single_node_connections_across_islands(nn,nbnd,bndn,nbed,bedn,nepn,epn,ged2nn,nd_flag,keep_element)
         CALL flag_single_element_passages(ne,nn,ect,nbnd,bndn,keep_element)
         CALL create_new_ect(ne,ect,keep_element,ne_new,ect_new)
         

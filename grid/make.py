@@ -3,12 +3,12 @@ import pprint
 targets = {'rotate':['rotate.F90',  'rotate_mod.F90',  'read_write_gmsh.F90',  'globals.F90',  'grid_file_mod.F90'],
            'rotate_test':['rotate_test.F90', 'rotate_mod.F90'],
            'gmsh2vtk':['gmsh2vtk.F90', 'globals.F90', 'grid_file_mod.F90', 'read_write_gmsh.F90', 'write_vtk.F90'],
-           'cull_waves_mesh':['cull_waves_mesh.F90', 'kdtree2.F90', 'in_cell_mod.F90','write_vtk.F90','read_write_gmsh.F90'],
+           'cull_waves_mesh':['cull_waves_mesh.F90', 'globals.F90', 'kdtree2.F90', 'in_cell_mod.F90', 'write_vtk.F90', 'read_write_gmsh.F90', 'fix_elements.F90', 'edge_connectivity_mod.F90'],
            'clean_mesh':['globals.F90', 'grid_file_mod.F90', 'edge_connectivity_mod.F90', 'fix_elements.F90', 'clean_mesh.F90']}
 
 FC = 'ifort'
-#FFLAGS = '-C -g -traceback'
-FFLAGS = '-O3'
+FFLAGS = '-C -g -traceback'
+#FFLAGS = '-O3'
 LIBRARY_LINKS = ['netcdf','netcdff']
 LIBRARY_PATHS = ['/blues/gpfs/software/centos7/spack-latest/opt/spack/linux-centos7-x86_64/intel-17.0.0/netcdf-fortran-4.4.4-urmb6ss/libs']
 INCLUDE_PATH = ['/blues/gpfs/software/centos7/spack-latest/opt/spack/linux-centos7-x86_64/intel-17.0.0/netcdf-fortran-4.4.4-urmb6ss/include']

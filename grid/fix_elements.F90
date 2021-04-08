@@ -1,6 +1,6 @@
       MODULE fix_elements 
 
-      USE globals, ONLY: rp,nverts
+      USE globals, ONLY: rp
 
       IMPLICIT NONE
 
@@ -176,7 +176,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
-      SUBROUTINE fix_single_node_connections_across_islands(nn,nbnd,bndn,nbed,bedn,nepn,epn,ged2nn,keep_element)
+      SUBROUTINE fix_single_node_connections_across_islands(nn,nbnd,bndn,nbed,bedn,nepn,epn,ged2nn,nd_flag,keep_element)
  
       IMPLICIT NONE
 
@@ -188,11 +188,11 @@
       INTEGER, DIMENSION(:), INTENT(IN) :: nepn
       INTEGER, DIMENSION(:,:), INTENT(IN) :: epn
       INTEGER, DIMENSION(:,:), INTENT(IN) :: ged2nn
+      INTEGER, DIMENSION(:), ALLOCATABLE,  INTENT(OUT) :: nd_flag
       INTEGER, DIMENSION(:), INTENT(INOUT) :: keep_element
 
       INTEGER :: i,j
       INTEGER :: nd,ged
-      INTEGER, DIMENSION(:), ALLOCATABLE :: nd_flag 
 
       ! Find nodes that are shared by more than two boundary edges
       ALLOCATE(nd_flag(nn))
@@ -344,7 +344,14 @@
 
       INTEGER :: el,i
 
-      ALLOCATE(ect_new(3,ne))
+      ne_new = 0
+      DO el = 1,ne
+        IF (keep_element(el) == 1) THEN
+          ne_new = ne_new + 1
+        ENDIF
+      ENDDO 
+
+      ALLOCATE(ect_new(3,ne_new))
       ne_new = 0
       DO el = 1,ne
         IF (keep_element(el) == 1) THEN
@@ -407,7 +414,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
      
-      SUBROUTINE remove_unconnected_nodes(nn,nepn,xy,ne,ect,nn_new,xy_new,ect_new)
+      SUBROUTINE remove_unconnected_nodes(nn,nepn,xy,ne,ect,nn_new,xy_new,ect_new,depth,depth_new)
 
       IMPLICIT NONE
 
@@ -419,6 +426,9 @@
       INTEGER, INTENT(OUT) :: nn_new
       REAL(rp), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: xy_new 
       INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: ect_new 
+      REAL(rp), DIMENSION(:), INTENT(IN), OPTIONAL :: depth
+      REAL(rp), DIMENSION(:), ALLOCATABLE, INTENT(OUT), OPTIONAL :: depth_new
+      
 
       INTEGER :: nd,el
       INTEGER, DIMENSION(:), ALLOCATABLE :: keep_nd
@@ -438,11 +448,17 @@
 
       ! Remove nodes from node coordinate array
       ALLOCATE(xy_new(2,nn_new))
+      IF (PRESENT(depth)) THEN
+        ALLOCATE(depth_new(nn_new))
+      ENDIF
       DO nd = 1,nn
         new_node_number = keep_nd(nd)
         IF (new_node_number /= 0) THEN
           xy_new(1,new_node_number) = xy(1,nd)
           xy_new(2,new_node_number) = xy(2,nd)
+          IF (PRESENT(depth)) THEN
+            depth_new(new_node_number) = depth(nd)
+          ENDIF
         ENDIF
       ENDDO 
 
@@ -463,6 +479,55 @@
 
       RETURN
       END SUBROUTINE remove_unconnected_nodes
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+      SUBROUTINE fix_element_node_orientation(ne,xy,ect)
+
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: ne
+      REAL(rp), DIMENSION(:,:), INTENT(IN) :: xy
+      INTEGER, DIMENSION(:,:), INTENT(INOUT) :: ect
+
+      INTEGER :: el
+      INTEGER :: tmp
+      REAL(rp) :: x1,x2,x3
+      REAL(rp) :: y1,y2,y3
+      REAL(rp) :: x1x3,x2x1
+      REAL(rp) :: area
+
+      DO el = 1,ne
+        x1 = xy(1,ect(1,el))
+        y1 = xy(2,ect(1,el))
+        x2 = xy(1,ect(2,el))
+        y2 = xy(2,ect(2,el))
+        x3 = xy(1,ect(3,el))
+        y3 = xy(2,ect(3,el))
+
+        x1x3 = x1-x3
+        IF (abs(x1x3) > 180d0) THEN
+          x1x3 = x1x3 - SIGN(360d0,x1x3)
+        ENDIF
+
+        x2x1 = x2-x1
+        IF (abs(x2-x1) > 180d0) THEN
+          x2x1 = x2x1 - SIGN(360d0,x2x1)
+        ENDIF
+
+        area = (y2-y1)*(x1x3)+(y3-y1)*(x2x1)
+
+        IF (area < 0d0) THEN
+          tmp = ect(2,el)
+          ect(2,el) = ect(3,el)
+          ect(3,el) = tmp 
+        ENDIF
+        
+      ENDDO
+
+      RETURN
+      END SUBROUTINE fix_element_node_orientation
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
