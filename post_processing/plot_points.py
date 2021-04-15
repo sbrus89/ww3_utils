@@ -70,7 +70,7 @@ variables = {
 ################################################################################################
 ################################################################################################
 
-def read_point_files(data_files,variables):
+def read_point_files(data_files,variables,start_date):
 
   for j,files in enumerate(data_files):
     for i,name in enumerate(files):
@@ -106,14 +106,14 @@ def read_point_files(data_files,variables):
           print(var)
           data[var][i][:] = nc_file.variables[var][:]
 
-  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
+  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'],start_date)
 
   return data, stations
 
 ################################################################################################
 ################################################################################################
 
-def interpolate_stations_from_fields(data_files,variables,station_file):
+def interpolate_stations_from_fields(data_files,variables,station_file,start_date):
 
   stations = read_station_file(station_file)
   nstations = len(stations['name'])
@@ -215,7 +215,7 @@ def interpolate_stations_from_fields(data_files,variables,station_file):
             interp = interpolate.LinearNDInterpolator(grid_pts,f)
             data[var][i][:] = interp(sta_pts)[:]
 
-  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'])
+  data['datetime'], data['date'] = output_time_to_date(data['time'],data['ref_date'],start_date)
 
   return data, stations
 ################################################################################################
@@ -393,12 +393,18 @@ if __name__ == '__main__':
   f = open(pwd+'/plot_points.config')
   cfg = yaml.load(f)
   pprint.pprint(cfg)
+
+  if 'start_date' not in cfg:
+    cfg['start_date'] = None
   
   # Create list of output files for each run
   runs = {}
   field = {}
   for run in cfg['model_direcs']:
     direc = cfg['model_direcs'][run]
+    if not os.path.exists(direc):
+      print('Directory for {} run data not found'.format(run))
+      raise SystemExit(0)
     wav_files = sorted(glob.glob(direc+'ww3*_tab.nc'))
     wnd_files = sorted(glob.glob(direc+'cfsr*_tab.nc'))
     if len(wav_files) > 0:
@@ -419,9 +425,9 @@ if __name__ == '__main__':
     for k,run in enumerate(runs):
       data_files = runs[run]
       if field[run]:
-        data[run],stations[run] = interpolate_stations_from_fields(data_files,variables,cfg["station_file"]) 
+        data[run],stations[run] = interpolate_stations_from_fields(data_files,variables,cfg["station_file"],cfg['start_date']) 
       else:
-        data[run],stations[run] = read_point_files(data_files,variables)  
+        data[run],stations[run] = read_point_files(data_files,variables,cfg['start_date'])  
     
     # Get list of all stations
     station_list = [] 
