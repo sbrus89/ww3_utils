@@ -402,6 +402,8 @@ if __name__ == '__main__':
   field = {}
   for run in cfg['model_direcs']:
     direc = cfg['model_direcs'][run]
+    if direc[-1] != '/':
+      direc = direc + '/'
     if not os.path.exists(direc):
       print('Directory for {} run data not found'.format(run))
       raise SystemExit(0)
