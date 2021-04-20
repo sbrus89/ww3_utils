@@ -6,6 +6,8 @@ import netCDF4
 import yaml
 import pprint
 
+vec_vars = ['wnd','uss']
+
 ########################################################################
 ########################################################################
 
@@ -15,7 +17,7 @@ def extract_vtk(data_direc, out_dir, out_prefix, variable_list):
     files = sorted(glob.glob(data_direc+'ww3.*'))
 
     nc_file = open_netcdf(files[0])
-    (vertices, connectivity, offsets) = get_mesh_information(nc_file)
+    (vertices, connectivity, offsets, M) = get_mesh_information(nc_file)
 
     build_field_time_series(files,
                             vertices,
@@ -23,12 +25,13 @@ def extract_vtk(data_direc, out_dir, out_prefix, variable_list):
                             offsets,
                             out_dir,
                             out_prefix,
-                            variable_list)
+                            variable_list,
+                            M)
 
 ########################################################################
 ########################################################################
 
-def build_field_time_series(files, vertices, connectivity, offsets, out_dir, out_prefix, variable_list):
+def build_field_time_series(files, vertices, connectivity, offsets, out_dir, out_prefix, variable_list, M):
 
     outType = 'float64'
 
@@ -68,9 +71,29 @@ def build_field_time_series(files, vertices, connectivity, offsets, out_dir, out
         # add fields to vtp file
         for var in variable_list:
           print('    '+var)
-          field = np.squeeze(nc_file.variables[var])
-          field = field.astype(outType)
-          vtk_file.appendData(field)
+          if var in vec_vars:
+            u = nc_file.variables['u'+var]
+            v = nc_file.variables['v'+var]
+
+            uv = np.vstack((np.zeros(u.shape),u,v)).T
+
+            xyz = np.einsum('ijk,ik->ij',M,uv)
+            x = np.squeeze(xyz[:,0])
+            y = np.squeeze(xyz[:,1])
+            z = np.squeeze(xyz[:,2])
+
+            x[x>1e10] = np.nan
+            y[y>1e10] = np.nan
+            z[z>1e10] = np.nan
+
+            vtk_file.appendData(x.astype(outType))
+            vtk_file.appendData(y.astype(outType))
+            vtk_file.appendData(z.astype(outType))
+          else:
+            field = np.squeeze(nc_file.variables[var])
+            field[field > 1e10] = np.nan
+            field = field.astype(outType)
+            vtk_file.appendData(field)
         vtk_file.save()
 
         # add time step to pdv file
@@ -137,7 +160,12 @@ def write_vtp_header(path, prefix,
     vtkFile.openData(str("Point"),
                      scalars='solution')
     for var in variable_list:
-        vtkFile.addHeader(var, outType, nPoints, 1)
+        if var in vec_vars:
+          vtkFile.addHeader('x'+var, outType, nPoints, 1)
+          vtkFile.addHeader('y'+var, outType, nPoints, 1)
+          vtkFile.addHeader('z'+var, outType, nPoints, 1)
+        else:
+          vtkFile.addHeader(var, outType, nPoints, 1)
     vtkFile.closeData(str("Point"))
 
     vtkFile.closePiece()
@@ -156,6 +184,7 @@ def get_mesh_information(nc_file):
 
     lon = np.radians(nc_file.variables['longitude'][:])
     lat = np.radians(nc_file.variables['latitude'][:])
+    nnode = lon.shape[0]
 
     R = 6371.0
     X = R*np.cos(lat)*np.cos(lon)
@@ -169,7 +198,29 @@ def get_mesh_information(nc_file):
     nelem = ect.shape[0]
     offsets = np.array(3*np.arange(1, nelem+1), int)
 
-    return vertices, connectivity, offsets  
+    M = Tmat(nnode,lon,lat)
+
+    return vertices, connectivity, offsets, M
+
+########################################################################
+########################################################################
+
+def Tmat(nn,lon,lat):
+
+  M = np.zeros((nn,3,3))
+  M[:,0,0] = np.cos(lat)*np.cos(lon)
+  M[:,1,0] = np.cos(lat)*np.sin(lon)
+  M[:,2,0] = np.sin(lat)
+
+  M[:,0,1] = -np.sin(lon)
+  M[:,1,1] = np.cos(lon)
+  M[:,2,1] = 0.0
+
+  M[:,0,2] = -np.sin(lat)*np.cos(lon)
+  M[:,1,2] = -np.sin(lat)*np.sin(lon)
+  M[:,2,2] = np.cos(lat)
+
+  return M
 
 ########################################################################
 ########################################################################
