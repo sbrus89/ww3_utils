@@ -25,48 +25,29 @@ def diff(fname1, fname2):
     combinedvars.sort()
     print(combinedvars)
     for varname in combinedvars:
-        if varname != 'xtime':
-          try:
-              print('testing %s'%(varname)),
-              failed = False
-              if varname == 'cellsOnCell' or varname == 'edgesOnCell' or varname == 'verticesOnCell':
-                 # for anum, nEdgesOnCell in enumerate(fin1.variables['nEdgesOnCell']):
-                 #     var = fin1.variables[varname][anum,:nEdgesOnCell] - fin2.variables[varname][anum,:nEdgesOnCell]
-                 #     failed = test_failed(var, varname, failed)
-                 #     if failed:
-                 #         break
-                 pass
-              elif varname == 'edgesOnEdge':
-                 # for anum, nEdgesOnEdge in enumerate(fin1.variables['nEdgesOnEdge']):
-                 #     var = fin1.variables[varname][anum,:nEdgesOnEdge] - fin2.variables[varname][anum,:nEdgesOnEdge]
-                 #     if len(var) > 0:
-                 #         failed = test_failed(var, varname, failed)
-                 #     if failed:
-                 #         break
-                 pass
-              else:
-                  shp1 = fin1.variables[varname][:].shape
-                  shp2 = fin2.variables[varname][:].shape
-                  if shp1 == shp2:
-                    var = fin1.variables[varname][:] - fin2.variables[varname][:]
-                    failed = test_failed(var, varname, failed)
-                  else:
-                    var = fin1.variables[varname][-1,:] - fin2.variables[varname][-1,:]
-                    failed = test_failed(var, varname, failed)
-              if not failed:
-                  print('-- ' + varname + ' is bit identical.')
-              else:
-                #print var
-                
-                print('min  ', fin1.variables[varname][:].min(), fin2.variables[varname][:].min())
-                print('max  ', fin1.variables[varname][:].max(), fin2.variables[varname][:].max())
-                print('mean ', fin1.variables[varname][:].mean(), fin2.variables[varname][:].mean())
-                print('min  diff ', np.abs(fin1.variables[varname][:] - fin2.variables[varname][:]).min())
-                print('max  diff ', np.abs(fin1.variables[varname][:] - fin2.variables[varname][:]).max())
-                print('mean diff ', np.abs(fin1.variables[varname][:] - fin2.variables[varname][:]).mean())
-                #print 'value', np.vstack((fin1.variables[varname][:], fin2.variables[varname][:]))
-          except:
-              print('-- WARNING: cannot test ' + varname + ' with values ' + fin1.variables[varname][:] + ' and ' + fin2.variables[varname][:])
+        try:
+            print('testing %s'%(varname)),
+            failed = False
+            shp1 = fin1.variables[varname][:].shape
+            shp2 = fin2.variables[varname][:].shape
+            if shp1 == shp2:
+              var = fin1.variables[varname][:] - fin2.variables[varname][:]
+              failed = test_failed(var, varname, failed)
+            else:
+              print('-- ' + varname + ' not the same shape')
+
+            if not failed:
+                print('-- ' + varname + ' is bit identical.')
+            else:
+              print('min  ', np.min(fin1.variables[varname][:]), np.min(fin2.variables[varname][:]))
+              print('max  ', np.max(fin1.variables[varname][:]), np.max(fin2.variables[varname][:]))
+              print('mean ', np.mean(fin1.variables[varname][:]), np.mean(fin2.variables[varname][:]))
+              print('min  diff ', np.min(np.abs(fin1.variables[varname][:] - fin2.variables[varname][:])))
+              print('max  diff ', np.max(np.abs(fin1.variables[varname][:] - fin2.variables[varname][:])))
+              print('mean diff ', np.mean(np.abs(fin1.variables[varname][:] - fin2.variables[varname][:])))
+              #print 'value', np.vstack((fin1.variables[varname][:], fin2.variables[varname][:]))
+        except:
+            print('-- WARNING: cannot test ' + varname )
 
 if __name__ == "__main__":
     import sys
