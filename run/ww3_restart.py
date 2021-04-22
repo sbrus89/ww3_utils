@@ -60,14 +60,20 @@ def find_restart_time(restart_time_expected=None):
   restart_time = ''
   start_time = ''
   end_time = ''
-  for line in lines:
+  n = 0
+  for i,line in enumerate(lines):
+
+    n = n + 1
 
     # Find lines inside output table
     if line.find('--------|------|---------------------|-------------------|---------------|') >= 0:
       output_intervals = True
+      n = 0 
       continue
-    if line.find('--------+------+---------------------+-------------------+---------------+') >= 0:
-      output_intervals = False
+    if line.find('--------+------+---------------------+-------------------+---------------+') >= 0 and n > 1: # For whatever reason, for E3SM output this line is  
+      output_intervals = False                                                                                 # right afer the ----|----|----| line with output 
+    elif n == 1:                                                                                               # following it. This prevents if from being flaged
+      continue                                                                                                 # as the end of the file    
 
     # Process lines inside output table
     if output_intervals == True:
@@ -124,6 +130,9 @@ def update_shel_input(restart_time,stop_time=None,restart_interval=None):
   pwd = os.getcwd()
 
   shel_inp = pwd + '/ww3_shel.inp'
+  if not os.path.exists(shel_inp):
+    return
+
   print("Updating: "+shel_inp)
 
   f = open(shel_inp,'r')
