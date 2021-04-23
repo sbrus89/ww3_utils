@@ -336,7 +336,7 @@ def read_station_data(obs_file,min_date,max_date,variables,output_datetime=None)
   # Convert observation data and replace fill values with nan
   for var in variables:
     obs_data[var] = np.asarray(obs_data[var])
-    obs_data[var] = obs_data[var].astype(np.float)
+    obs_data[var] = obs_data[var].astype(float)
     fill_val = variables[var]['fill_val']
     obs_data[var][obs_data[var] >= fill_val] = np.nan
 
