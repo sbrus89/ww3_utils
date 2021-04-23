@@ -27,7 +27,6 @@ def replace_ww3_ounp_inp_line(comment,opt1,opt2=None,opt3=None,opt4=None):
   
   # Replace the line with the new information (opt1 and opt2) 
   line_info = lines[n].split()
-  print(line_info)
   line_info[0] = opt1
   if opt2:
     line_info[1] = opt2
@@ -35,9 +34,7 @@ def replace_ww3_ounp_inp_line(comment,opt1,opt2=None,opt3=None,opt4=None):
     line_info[2] = opt3
   if opt4:
     line_info[3] = opt4
-  print(line_info)
   lines[n] = '   '+'  '.join(line_info)
-  print(lines[n])
   founp.close()
   
   # Re-write the ww3_ounp input file

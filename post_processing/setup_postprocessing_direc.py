@@ -6,6 +6,7 @@ obs_dir = '/home/sbrus/run/WW3_testing/glo_30m/post_processing/obs_data/'
 output_dir = '/lcrc/group/acme/sbrus/scratch/anvil/20210422.UWAV-CFSR.CFSR_wQU225EC60to30.anvil/run/'
 run_dir = output_dir
 log_dir = output_dir
+nc_output_dir = '/lcrc/group/acme/sbrus/scratch/anvil/20210422.UWAV-CFSR.CFSR_wQU225EC60to30.anvil/post_processing/model_data/'
 
 ww3_utils = './ww3_utils/post_processing/'
 ww3_exe_dir = '/gpfs/fs1/home/sbrus/E3SM/components/ww3/src/source/WW3/model/exe/'
@@ -62,6 +63,8 @@ replace_config_file_line(post_processing_dir,'process_points.config','run_direc'
 replace_config_file_line(post_processing_dir,'process_fields.config','run_direc',run_dir)
 replace_config_file_line(post_processing_dir,'process_points.config','log_direc',log_dir)
 replace_config_file_line(post_processing_dir,'process_fields.config','log_direc',log_dir)
+replace_config_file_line(post_processing_dir,'process_points.config','data_direc',nc_output_dir+'points/')
+replace_config_file_line(post_processing_dir,'process_fields.config','data_direc',nc_output_dir+'fields/')
 os.chdir(post_processing_dir)
 subprocess.call(['python', 'ww3_ounf.py'])
 subprocess.call(['python', 'ww3_ounp.py'])
