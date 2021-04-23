@@ -81,11 +81,12 @@ if __name__ == '__main__':
     t0 = datetime.datetime.strptime(point_output_times[0],'%Y%m%d %H%M%S')
     t1 = datetime.datetime.strptime(point_output_times[1],'%Y%m%d %H%M%S')
     dt = t1-t0
-    output_interval = str(int(dt.total_seconds()))
-    print(output_interval,noutputs)
+    output_interval = int(dt.total_seconds())
+    if output_interval < 3600:
+      output_interval = 3600
     
     # Replace the time information line
-    replace_ww3_ounp_inp_line('start date',start_date,start_time,output_interval,noutputs)
+    replace_ww3_ounp_inp_line('start date',start_date,start_time,str(output_interval),noutputs)
 
     for out_type in cfg['out_types']:
 
