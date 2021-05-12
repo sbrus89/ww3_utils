@@ -35,6 +35,8 @@ def diff(fname1, fname2):
               failed = test_failed(var, varname, failed)
             else:
               print('-- ' + varname + ' not the same shape')
+              var = fin1.variables[varname][-1,:] - fin2.variables[varname][-1,:]
+              failed = test_failed(var, varname, failed)
 
             if not failed:
                 print('-- ' + varname + ' is bit identical.')
