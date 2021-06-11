@@ -40,7 +40,9 @@ def write_ww3_shel_inp():
   f.write('   '+cfg["water_lev_flag"]+ ' F'+'\n') # These varaiables are
   f.write('   '+cfg["current_flag"]  + ' F'+'\n') # assumed to not 
   f.write('   '+cfg["wind_flag"]     + ' F'+'\n') # be homogenous 
-  f.write('   '+cfg["ice_flag"]            +'\n')
+  f.write('   '+cfg["ice_flag"]      + ' F'+'\n')
+  f.write('   '+'F F'                 +'\n') # atm momentum 
+  f.write('   '+'F F'                 +'\n') # air density
   f.write('   '+'F'                 +'\n') # Assimilation data
   f.write('   '+'F'                 +'\n') # Assimilation data
   f.write('   '+'F'                 +'\n') # Assimilation data
@@ -91,6 +93,7 @@ def write_ww3_shel_inp():
   f.write('$\n')
   f.write('$ Homogenous field data ----------------------------------------------$'+'\n')
   f.write('$\n')
+  f.write('   '+"'the_end'"+' 0\n')
   f.write('   '+"'STP'"+'\n')
   f.write('$ -------------------------------------------------------------------- $'+'\n')
   f.write('$ End of input file                                                    $'+'\n')
