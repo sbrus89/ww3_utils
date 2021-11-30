@@ -57,7 +57,7 @@ if __name__ == '__main__':
   pwd = os.getcwd()
 
   f = open(pwd+'/make_remapping_files.config')
-  cfg = yaml.load(f)
+  cfg = yaml.load(f,Loader=yaml.Loader)
   pprint.pprint(cfg)
 
   for map_type in cfg['map_types']:
