@@ -1,12 +1,13 @@
 import os
 import subprocess
 
+run_name = '20210930.UWAV-CFSR.CFSR_wQU225EC60to30.anvil'
 post_processing_dir = './post_processing'
 obs_dir = '/home/sbrus/run/WW3_testing/glo_30m/post_processing/obs_data/'
-output_dir = '/lcrc/group/acme/sbrus/scratch/anvil/20210422.UWAV-CFSR.CFSR_wQU225EC60to30.anvil/run/'
+output_dir = '/lcrc/group/acme/sbrus/scratch/anvil/'+run_name+'/run/'
 run_dir = output_dir
 log_dir = output_dir
-nc_output_dir = '/lcrc/group/acme/sbrus/scratch/anvil/20210422.UWAV-CFSR.CFSR_wQU225EC60to30.anvil/post_processing/model_data/'
+nc_output_dir = '/lcrc/group/acme/sbrus/scratch/anvil/'+run_name+'/post_processing/model_data/'
 
 ww3_utils = './ww3_utils/post_processing/'
 ww3_exe_dir = '/gpfs/fs1/home/sbrus/E3SM/components/ww3/src/source/WW3/model/exe/'

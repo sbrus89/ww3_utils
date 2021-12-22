@@ -69,11 +69,11 @@ if __name__ == '__main__':
     subprocess.call(['ln','-sf',f,pwd+'/out_pnt.ww3'])
   
     # Find the start and end dates from the filename
-    date_range = f.split(".")[-1]  
-    start_date_time = date_range.split('-')[0]
-    start_date = start_date_time.split('_')[0]
-    start_time = start_date_time.split('_')[1]
-    print(start_date,start_time)
+    #date_range = f.split(".")[-1]  
+    #start_date_time = date_range.split('-')[0]
+    #start_date = start_date_time.split('_')[0]
+    #start_time = start_date_time.split('_')[1]
+    #print(start_date,start_time)
 
     # Find output interval and number of outputs
     restart_output_times,gridded_output_times,point_output_times,start,end = ww3_log.find_output_times(log_files[i])
@@ -86,7 +86,7 @@ if __name__ == '__main__':
       output_interval = 3600
     
     # Replace the time information line
-    replace_ww3_ounp_inp_line('start date',start_date,start_time,str(output_interval),noutputs)
+    replace_ww3_ounp_inp_line('start date',start.split()[0],start.split()[1],str(output_interval),noutputs)
 
     for out_type in cfg['out_types']:
 

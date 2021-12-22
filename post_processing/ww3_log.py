@@ -29,12 +29,13 @@ def find_output_times(log_file):
       continue
     if line.find('--------+------+---------------------+-------------------+---------------+') >= 0 and n > 1: # For whatever reason, for E3SM output this line is  
       output_intervals = False                                                                                 # right afer the ----|----|----| line with output 
-    elif n == 1:                                                                                               # following it. This prevents if from being flaged
-      continue                                                                                                 # as the end of the file    
+    #elif n == 1:                                                                                               # following it. This prevents if from being flaged
+    #  continue                                                                                                 # as the end of the file    
 
     # Process lines inside output table
     if output_intervals == True:
       cols = line.split('|')
+      print(cols)
       
       # Find date and time
       date_time = cols[2].strip().split()
