@@ -47,7 +47,7 @@ def replace_ww3_ounp_inp_line(filename,comment,opt1,opt2=None,opt3=None,opt4=Non
 
 if __name__ == '__main__':
 
-  f = open(pwd+'/process_points.config')
+  f = open(pwd+'/process_output.config')
   cfg = yaml.load(f,yaml.Loader)
   pprint.pprint(cfg)
 
