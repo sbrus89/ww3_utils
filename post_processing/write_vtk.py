@@ -186,7 +186,7 @@ def get_mesh_information(nc_file):
     lat = np.radians(nc_file.variables['latitude'][:])
     nnode = lon.shape[0]
 
-    R = 6371.0
+    R = 6371000.0
     X = R*np.cos(lat)*np.cos(lon)
     Y = R*np.cos(lat)*np.sin(lon)
     Z = R*np.sin(lat)
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     
     # Read config file  
     f = open(pwd+'/write_vtk.config')
-    cfg = yaml.load(f)
+    cfg = yaml.load(f, Loader=yaml.Loader)
     pprint.pprint(cfg)
 
     extract_vtk(cfg['data_dir'], cfg['out_dir'], cfg['out_prefix'], cfg['variable_list'])
