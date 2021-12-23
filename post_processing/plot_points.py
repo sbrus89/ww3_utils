@@ -391,7 +391,7 @@ if __name__ == '__main__':
   
   # Read config file  
   f = open(pwd+'/plot_points.config')
-  cfg = yaml.load(f)
+  cfg = yaml.load(f,Loader=yaml.Loader)
   pprint.pprint(cfg)
 
   if 'start_date' not in cfg:
