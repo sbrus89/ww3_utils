@@ -15,10 +15,10 @@ out_types = {'wave':{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave par
 ###################################################################################################
 ###################################################################################################
 
-def replace_ww3_ounp_inp_line(comment,opt1,opt2=None,opt3=None,opt4=None):
+def replace_ww3_ounp_inp_line(filename,comment,opt1,opt2=None,opt3=None,opt4=None):
 
   # Find the requested line (nline) in the ww3_ounp input file
-  founp = open(pwd+'/ww3_ounp.inp','r')
+  founp = open(pwd+'/'+filename,'r')
   lines = founp.read().splitlines()
   for n,line in enumerate(lines):
     if line.find(comment) > 0:
@@ -38,7 +38,7 @@ def replace_ww3_ounp_inp_line(comment,opt1,opt2=None,opt3=None,opt4=None):
   founp.close()
   
   # Re-write the ww3_ounp input file
-  founp = open(pwd+'/ww3_ounp.inp','w')
+  founp = open(pwd+'/'+filename,'w')
   founp.write('\n'.join(lines))
   founp.close()
 
@@ -51,56 +51,71 @@ if __name__ == '__main__':
   cfg = yaml.load(f,yaml.Loader)
   pprint.pprint(cfg)
 
-  # Check if the ww3_ounp input file exists
-  if not os.path.isfile(pwd+'/ww3_ounp.inp'):
-    print('ww3_ounp.inp not found')
-    raise SystemExit(0)
   
   # Link the mod_def.ww3 file to the current directory
   subprocess.call(['ln','-sf',cfg['run_direc']+'mod_def.ww3',pwd])
-  
-  # Loop over all out_pnt.ww3.YYYYMMDD_HHMMSS-YYMMDD_HHMMSS files
-  pnt_files = sorted(glob.glob(cfg['output_direc']+'out_pnt.ww3*'))
-  log_files = sorted(glob.glob(cfg['log_direc']+'log.ww3*'))
-  for i in range(len(pnt_files)):
-  
-    f = pnt_files[i]
-    # Link the out_pnt.ww3 file to the current directory
-    subprocess.call(['ln','-sf',f,pwd+'/out_pnt.ww3'])
-  
-    # Find the start and end dates from the filename
-    #date_range = f.split(".")[-1]  
-    #start_date_time = date_range.split('-')[0]
-    #start_date = start_date_time.split('_')[0]
-    #start_time = start_date_time.split('_')[1]
-    #print(start_date,start_time)
 
-    # Find output interval and number of outputs
-    restart_output_times,gridded_output_times,point_output_times,start,end = ww3_log.find_output_times(log_files[i])
-    noutputs = str(len(point_output_times))
-    t0 = datetime.datetime.strptime(point_output_times[0],'%Y%m%d %H%M%S')
-    t1 = datetime.datetime.strptime(point_output_times[1],'%Y%m%d %H%M%S')
-    dt = t1-t0
-    output_interval = int(dt.total_seconds())
-    if output_interval < 3600:
-      output_interval = 3600
+  for out_type in cfg['out_types']:
+
+    if out_type == 'fields':
+      filename = 'out_grd'
+      exe = 'ww3_ounf'
+    elif out_type == 'points':
+      filename = 'out_pnt'
+      exe = 'ww3_ounp'
+    else:
+      print('output type not recongnized')
+      raise SystemExit(0)
+
+
+
+    # Check if the ww3_ounp input file exists
+    if not os.path.isfile(pwd+'/'+exe+'.inp'):
+      print(exe+'.inp not found')
+      raise SystemExit(0)
     
-    # Replace the time information line
-    replace_ww3_ounp_inp_line('start date',start.split()[0],start.split()[1],str(output_interval),noutputs)
-
-    for out_type in cfg['out_types']:
-
-      otype = out_types[out_type]
+    # Loop over all out_pnt.ww3.YYYYMMDD_HHMMSS-YYMMDD_HHMMSS files
+    pnt_files = sorted(glob.glob(cfg['output_direc']+filename+'.ww3*'))
+    log_files = sorted(glob.glob(cfg['log_direc']+'log.ww3*'))
+    for i in range(len(pnt_files)):
+    
+      f = pnt_files[i]
+      # Link the out_pnt.ww3 file to the current directory
+      subprocess.call(['ln','-sf',f,pwd+'/'+filename+'.ww3'])
+    
+      # Find output interval and number of outputs
+      restart_output_times,gridded_output_times,point_output_times,start,end = ww3_log.find_output_times(log_files[i])
+      noutputs = str(len(point_output_times))
+      t0 = datetime.datetime.strptime(point_output_times[0],'%Y%m%d %H%M%S')
+      t1 = datetime.datetime.strptime(point_output_times[1],'%Y%m%d %H%M%S')
+      dt = t1-t0
+      output_interval = int(dt.total_seconds())
+      if output_interval < 3600:
+        output_interval = 3600
       
-      # Replace the output type information lines
-      replace_ww3_ounp_inp_line('file prefix' ,otype['prefix'])
-      replace_ww3_ounp_inp_line('output type' ,otype['type'])
-      replace_ww3_ounp_inp_line('sub-type',otype['subtype'])
+      # Replace the time information line
+      replace_ww3_ounp_inp_line(exe+'.inp','start date',start.split()[0],start.split()[1],str(output_interval),noutputs)
+
+      if out_type == 'points':
   
-      # Run the ww3_ounp program
-      subprocess.call(['srun','-n','4',pwd+'/ww3_ounp'])
+        for out_type in cfg['point_out_types']:
   
-  # Move file to data directory
-  if not os.path.exists(cfg['data_direc']):
-    subprocess.call(['mkdir','-p',cfg['data_direc']])
-  subprocess.call('mv *.nc '+cfg['data_direc'],shell=True)
+          otype = out_types[out_type]
+          
+          # Replace the output type information lines
+          replace_ww3_ounp_inp_line(exe+'.inp','file prefix' ,otype['prefix'])
+          replace_ww3_ounp_inp_line(exe+'.inp','output type' ,otype['type'])
+          replace_ww3_ounp_inp_line(exe+'.inp','sub-type',otype['subtype'])
+    
+          # Run the ww3_ounp program
+          subprocess.call(['srun','-n','4',pwd+'/ww3_ounp'])
+
+      elif out_type == 'fields':
+
+        #Run the ww3_ounf program
+        subprocess.call([pwd+'/ww3_ounf'])
+    
+    # Move file to data directory
+    if not os.path.exists(cfg['data_direc']+out_type):
+      subprocess.call(['mkdir','-p',cfg['data_direc']+out_type])
+    subprocess.call('mv *.nc '+cfg['data_direc']+out_type,shell=True)
