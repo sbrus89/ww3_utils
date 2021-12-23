@@ -481,76 +481,78 @@ if __name__ == '__main__':
     # Get data from observation file at output times
     if not obs_file:      
       print( '  no observation file found')
+      obs_data = {}
+      obs_data['datetime'] = np.array([])
     else:
       print( '  '+obs_file)
       obs_data = read_station_data(obs_file,date_min,date_max,variables)
         
-      # Create figure 
-      fig = plt.figure(figsize=[6,2+2*len(variables)])
-      gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
-     
-      # Find station location 
-      for run in stations:
+    # Create figure 
+    fig = plt.figure(figsize=[6,2+2*len(variables)])
+    gs = gridspec.GridSpec(nrows=len(variables)+1,ncols=2,figure=fig)
+   
+    # Find station location 
+    for run in stations:
+      if sta in stations[run]['name']:
+        ind = stations[run]['name'].index(sta)
+        lon = stations[run]['lon'][ind]
+        lat = stations[run]['lat'][ind]
+        break
+   
+    # Plot global station location
+    ax = fig.add_subplot(gs[0,0],projection=ccrs.PlateCarree())
+    ax.set_extent([-180.0, 180.0, -90.0, 90.0],crs=ccrs.PlateCarree())
+    ax.add_feature(cfeature.LAND, zorder=100)
+    ax.add_feature(cfeature.LAKES, alpha=0.5, zorder=101)
+    ax.coastlines(zorder=101)
+    ax.plot(lon,lat,'ro',zorder=102)
+    
+    # Plot local station location
+    ax = fig.add_subplot(gs[0,1],projection=ccrs.PlateCarree())
+    ax.set_extent([lon-10.0, lon+10.0, lat-7.0, lat+7.0],crs=ccrs.PlateCarree())
+    ax.add_feature(cfeature.LAND, zorder=100)
+    ax.add_feature(cfeature.LAKES, alpha=0.5, zorder=101)
+    ax.coastlines(zorder=101)
+    ax.plot(lon,lat,'ro',zorder=102)
+
+    # Plot modeled and observed data timeseries
+    for k,var in enumerate(variables):
+      print( '  '+var)
+      lines = []
+      labels = []
+      data_plotted = False
+      ax = fig.add_subplot(gs[k+1,:])
+      if np.size(obs_data['datetime']) > 0:
+        l1, = ax.plot(obs_data['datetime'],obs_data[var])
+        lines.append(l1)
+        labels.append('Observed')
+        data_plotted = True
+      for run in data:
         if sta in stations[run]['name']:
           ind = stations[run]['name'].index(sta)
-          lon = stations[run]['lon'][ind]
-          lat = stations[run]['lat'][ind]
-          break
-     
-      # Plot global station location
-      ax = fig.add_subplot(gs[0,0],projection=ccrs.PlateCarree())
-      ax.set_extent([-180.0, 180.0, -90.0, 90.0],crs=ccrs.PlateCarree())
-      ax.add_feature(cfeature.LAND, zorder=100)
-      ax.add_feature(cfeature.LAKES, alpha=0.5, zorder=101)
-      ax.coastlines(zorder=101)
-      ax.plot(lon,lat,'ro',zorder=102)
-      
-      # Plot local station location
-      ax = fig.add_subplot(gs[0,1],projection=ccrs.PlateCarree())
-      ax.set_extent([lon-10.0, lon+10.0, lat-7.0, lat+7.0],crs=ccrs.PlateCarree())
-      ax.add_feature(cfeature.LAND, zorder=100)
-      ax.add_feature(cfeature.LAKES, alpha=0.5, zorder=101)
-      ax.coastlines(zorder=101)
-      ax.plot(lon,lat,'ro',zorder=102)
-  
-      # Plot modeled and observed data timeseries
-      for k,var in enumerate(variables):
-        print( '  '+var)
-        lines = []
-        labels = []
-        data_plotted = False
-        ax = fig.add_subplot(gs[k+1,:])
-        if np.size(obs_data['datetime']) > 0:
-          l1, = ax.plot(obs_data['datetime'],obs_data[var])
-          lines.append(l1)
-          labels.append('Observed')
+          if variables[var]['recip'] == True:
+            data[run][var][:,ind] = 1.0/data[run][var][:,ind]
+          l2, = ax.plot(data[run]['datetime'],data[run][var][:,ind])
+          lines.append(l2)
+          labels.append(run)
           data_plotted = True
-        for run in data:
-          if sta in stations[run]['name']:
-            ind = stations[run]['name'].index(sta)
-            if variables[var]['recip'] == True:
-              data[run][var][:,ind] = 1.0/data[run][var][:,ind]
-            l2, = ax.plot(data[run]['datetime'],data[run][var][:,ind])
-            lines.append(l2)
-            labels.append(run)
-            data_plotted = True
-        ax.set_title(variables[var]['title'])
-        if data_plotted:
-          ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))
-        ax.set_xlabel('time')
-        ax.set_ylabel(variables[var]['label']+' ('+variables[var]['units']+')')
-        #print ax.get_xlim()
-        if variables[var]['units'] == 'deg':
-          ax.set_ylim([0.0,360.0])          
-        if ax.get_xlim() == (-0.001, 0.001): # Detect when there is no availiable data
-          fig.delaxes(ax)                    # And delete axis to prevent an error
-      lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
-      st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
-      fig.canvas.draw()
-      fig.tight_layout()
-      fig.savefig(sta+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
-      plt.close()
+      ax.set_title(variables[var]['title'])
+      if data_plotted:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+      ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))
+      ax.set_xlabel('time')
+      ax.set_ylabel(variables[var]['label']+' ('+variables[var]['units']+')')
+      #print ax.get_xlim()
+      if variables[var]['units'] == 'deg':
+        ax.set_ylim([0.0,360.0])          
+      if ax.get_xlim() == (-0.001, 0.001): # Detect when there is no availiable data
+        fig.delaxes(ax)                    # And delete axis to prevent an error
+    lgd = plt.legend(lines,labels,loc=9,bbox_to_anchor=(0.5,-0.5),ncol=2,fancybox=False,edgecolor='k')
+    st = plt.suptitle('Station '+sta,y=1.025,fontsize=16)
+    fig.canvas.draw()
+    fig.tight_layout()
+    fig.savefig(sta+'.png',bbox_inches='tight',bbox_extra_artists=(lgd,st,))
+    plt.close()
   
   if not os.path.exists(cfg["plot_direc"]):
     subprocess.call(['mkdir','-p',cfg["plot_direc"]])
