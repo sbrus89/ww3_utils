@@ -17,6 +17,7 @@ def write_ww3_ounf_inp():
   f.write('$ WAVEWATCH III NETCDF Grid output post-processing                     $\n')
   f.write('$ -------------------------------------------------------------------- $\n')
   f.write('$\n')
+  f.write('$ start date, increment, number of outputs\n'
   f.write('   '+'  '.join([cfg['first_output_time'],
                            cfg['increment'],
                            cfg['number_of_outputs']])+'\n')
