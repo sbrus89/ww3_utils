@@ -405,7 +405,7 @@ if __name__ == '__main__':
     if direc[-1] != '/':
       direc = direc + '/'
     if not os.path.exists(direc):
-      print('Directory for {} run data not found'.format(run))
+      print('Directory for {} run data not found: {}'.format(run,direc))
       raise SystemExit(0)
     wav_files = sorted(glob.glob(direc+'ww3*_tab.nc'))
     wnd_files = sorted(glob.glob(direc+'cfsr*_tab.nc'))
