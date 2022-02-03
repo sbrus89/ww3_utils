@@ -24,6 +24,7 @@
       CHARACTER (:), ALLOCATABLE :: mesh_file
       CHARACTER (:), ALLOCATABLE :: mesh_file_out
       TYPE(grid_type) :: grid
+      LOGICAL :: file_exists
 
       NAMELIST / inputs / LON_POLE, LAT_POLE, wind_file, mesh_file, mesh_file_out
 
@@ -45,7 +46,7 @@
 
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-      ! Rotate wind coordinates 
+      ! Rotate mesh coordinates 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
       CALL read_gmsh_file(mesh_file,grid)
@@ -93,6 +94,12 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       ! Read wind data
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+      INQUIRE(FILE=wind_file,EXIST=file_exists)
+      IF (.not. file_exists) THEN
+        PRINT*, "Wind file does not exist"
+        STOP
+      ENDIF
 
       CALL check(NF90_OPEN(wind_file,NF90_WRITE,ncid))      
 
