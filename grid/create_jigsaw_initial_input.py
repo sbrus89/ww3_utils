@@ -43,7 +43,12 @@ def create_initial_points(meshfile,lon,lat,hfunction,sphere_radius,outfile):
   # Get coordinates of points
   lon = lonCell[idx]
   lat = latCell[idx]
-  npt = idx.size
+
+  lon = np.append(lon,0.0)
+  lat = np.append(lat,0.5*np.pi)
+
+  npt = lon.size
+  print(npt)
 
   # Change to Cartesian coordinates
   x,y,z = calc_distance.lonlat2xyz(lon,lat,sphere_radius)
