@@ -171,6 +171,10 @@ def waves_mesh(cfg):
      
       subprocess.call('./cull_waves_mesh',shell=True)
 
+#------------------------------------ output ocean mesh polygons
+
+    subprocess.call('paraview_vtk_field_extractor.py -f '+cfg['ocean_mesh']+' --ignore_time -v areaCell -o '+cfg['ocean_mesh']+'.vtk' ,shell=True)
+
     return
 
 
