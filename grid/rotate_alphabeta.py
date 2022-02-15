@@ -8,30 +8,23 @@ import pprint
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import plot_alphabeta
+import yaml
+import os
 plt.switch_backend('agg')
 
 
-nfreq = 50
-ndir = 36
-filename_local_in = 'obstructions_local.glo_unst.in'
-filename_shadow_in = 'obstructions_shadow.glo_unst.in'
-filename_local_out = 'obstructions_local.glo_unst_RTD.in'
-filename_shadow_out = 'obstructions_shadow.glo_unst_RTD.in'
-angled_file = 'angled.d'
-
-theta = np.radians(np.linspace(0.0,360.0,ndir,endpoint=False))
-freq = np.linspace(0.0,1.0,nfreq)
-Theta,Freq = np.meshgrid(theta,freq)
 
 ########################################################################
 ########################################################################
 
 def write_alpha_beta(filename,header,nodes,lon,lat,sizes,alpha_spec,beta_spec):
 
+  n = alpha_spec.shape[0]
+  nfreq = alpha_spec.shape[1]
+  ndir = alpha_spec.shape[2]
+
   lines = []
   lines.append(header)
-
-  n = alpha_spec.shape[0]
   lines.append(str(n))
 
   for i in range(n):
@@ -64,6 +57,9 @@ def write_alpha_beta(filename,header,nodes,lon,lat,sizes,alpha_spec,beta_spec):
 def rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec):
 
   n = alpha_spec.shape[0]
+  nfreq = alpha_spec.shape[1]
+  ndir = alpha_spec.shape[2]
+
   alpha_interp = np.zeros((n,nfreq,ndir))
   beta_interp = np.zeros((n,nfreq,ndir))
   for i in range(n):
@@ -78,7 +74,7 @@ def rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec):
 ########################################################################
 ########################################################################
 
-def plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,kind):
+def plot_alpha_beta_spectra(Theta,Freq,alpha_spec,beta_spec,alpha_interp,beta_interp,kind):
 
   for i in range(10):
     print(i)
@@ -113,20 +109,29 @@ def plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,kind):
 
 if __name__ == "__main__":
 
+  pwd = os.getcwd()
 
-  data = np.loadtxt(angled_file)
+  f = open(pwd+'/rotate_alphabeta.config')
+  cfg = yaml.load(f,yaml.Loader)
+  pprint.pprint(cfg)
+  
+  theta = np.radians(np.linspace(0.0,360.0,cfg['ndir'],endpoint=False))
+  freq = np.linspace(0.0,1.0,cfg['nfreq'])
+  Theta,Freq = np.meshgrid(theta,freq)
+
+  data = np.loadtxt(cfg['angled_file'])
   angled = data[:,2]
 
-  lon_local,lat_local,nodes,sizes,alpha_local_avg,beta_local_avg,alpha_spec,beta_spec = plot_alphabeta.read_alpha_beta(filename_local_in)
+  lon_local,lat_local,nodes,sizes,alpha_local_avg,beta_local_avg,alpha_spec,beta_spec = plot_alphabeta.read_alpha_beta(cfg['filename_local_in'])
   alpha_interp,beta_interp = rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec)
   header = '$WAVEWATCH III LOCAL OBSTRUCTIONS'
-  write_alpha_beta(filename_local_out,header,nodes,lon_local,lat_local,sizes,alpha_interp,beta_interp)
-  plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,'local')
+  write_alpha_beta(cfg['filename_local_out'],header,nodes,lon_local,lat_local,sizes,alpha_interp,beta_interp)
+  plot_alpha_beta_spectra(Theta,Freq,alpha_spec,beta_spec,alpha_interp,beta_interp,'local')
   
   
-  lon_shadow,lat_shadow,nodes,sizes,alpha_shadow_avg,beta_shadow_avg,alpha_spec,beta_spec = plot_alphabeta.read_alpha_beta(filename_shadow_in)
+  lon_shadow,lat_shadow,nodes,sizes,alpha_shadow_avg,beta_shadow_avg,alpha_spec,beta_spec = plot_alphabeta.read_alpha_beta(cfg['filename_shadow_in'])
   alpha_interp,beta_interp = rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec)
   header = '$WAVEWATCH III SHADOW OBSTRUCTIONS'
-  write_alpha_beta(filename_shadow_out,header,nodes,lon_shadow,lat_shadow,sizes,alpha_interp,beta_interp)
-  plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,'shadow')
+  write_alpha_beta(cfg['filename_shadow_out'],header,nodes,lon_shadow,lat_shadow,sizes,alpha_interp,beta_interp)
+  plot_alpha_beta_spectra(Theta,Freq,alpha_spec,beta_spec,alpha_interp,beta_interp,'shadow')
   
