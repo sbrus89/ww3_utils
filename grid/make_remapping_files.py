@@ -23,7 +23,7 @@ def make_remapping_files(grid1,grid2,grid1_shortname,grid2_shortname,datestamp,r
     print('map type not recognized')
     raise SystemExit(0)
 
-  flags = ' --ignore_unmapped'
+  flags = ' --ignore_unmapped --ignore_degenerate'
   if reg1:
     flags += ' --src_regional'
   if reg2:
@@ -36,7 +36,7 @@ def make_remapping_files(grid1,grid2,grid1_shortname,grid2_shortname,datestamp,r
                                                               ' --weight '+map_name+
                                                               flags, shell=True)
 
-  flags = ' --ignore_unmapped'
+  flags = ' --ignore_unmapped --ignore_degenerate'
   if reg1:
     flags += ' --dst_regional'
   if reg2:
