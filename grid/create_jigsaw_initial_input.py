@@ -44,8 +44,8 @@ def create_initial_points(meshfile,lon,lat,hfunction,sphere_radius,outfile):
   lon = lonCell[idx]
   lat = latCell[idx]
 
-  lon = np.append(lon,0.0)
-  lat = np.append(lat,0.5*np.pi)
+  #lon = np.append(lon,0.0)
+  #lat = np.append(lat,0.5*np.pi)
 
   npt = lon.size
   print(npt)
