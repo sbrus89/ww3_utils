@@ -23,8 +23,8 @@ theta = np.radians(np.linspace(0.0,360.0,ndir,endpoint=False))
 freq = np.linspace(0.0,1.0,nfreq)
 Theta,Freq = np.meshgrid(theta,freq)
 
-#data = np.loadtxt('angled.d')
-#angled = data[:,2]
+data = np.loadtxt('angled.d')
+angled = data[:,2]
 
 ########################################################################
 ########################################################################
@@ -194,19 +194,19 @@ if __name__ == "__main__":
 
 
   lon_local,lat_local,nodes,sizes,alpha_local_avg,beta_local_avg,alpha_spec,beta_spec = read_alpha_beta(filename_local)
-  #alpha_interp,beta_interp = rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec)
-  #filename = 'obstructions_local.glo_unst_RTDplus.in'
-  #header = '$WAVEWATCH III LOCAL OBSTRUCTIONS'
-  #write_alpha_beta(filename,header,nodes,lon_local,lat_local,sizes,alpha_interp,beta_interp)
-  #plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,'local')
-  #
-  #
+  alpha_interp,beta_interp = rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec)
+  filename = 'obstructions_local.glo_unst_RTD.in'
+  header = '$WAVEWATCH III LOCAL OBSTRUCTIONS'
+  write_alpha_beta(filename,header,nodes,lon_local,lat_local,sizes,alpha_interp,beta_interp)
+  plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,'local')
+  
+  
   lon_shadow,lat_shadow,nodes,sizes,alpha_shadow_avg,beta_shadow_avg,alpha_spec,beta_spec = read_alpha_beta(filename_shadow)
-  #alpha_interp,beta_interp = rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec)
-  #filename = 'obstructions_shadow.glo_unst_RTDplus.in'
-  #header = '$WAVEWATCH III SHADOW OBSTRUCTIONS'
-  #write_alpha_beta(filename,header,nodes,lon_shadow,lat_shadow,sizes,alpha_interp,beta_interp)
-  #plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,'shadow')
+  alpha_interp,beta_interp = rotate_and_interpolate(Theta,nodes,angled,alpha_spec,beta_spec)
+  filename = 'obstructions_shadow.glo_unst_RTD.in'
+  header = '$WAVEWATCH III SHADOW OBSTRUCTIONS'
+  write_alpha_beta(filename,header,nodes,lon_shadow,lat_shadow,sizes,alpha_interp,beta_interp)
+  plot_alpha_beta_spectra(alpha_spec,beta_spec,alpha_interp,beta_interp,'shadow')
   
   
   fig = plt.figure(figsize=(6,4.5))

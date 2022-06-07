@@ -1,7 +1,7 @@
 FC := ifort
 FFLAGS := -C -g -traceback
-LIB := -L/blues/gpfs/software/centos7/spack-latest/opt/spack/linux-centos7-x86_64/intel-17.0.0/netcdf-fortran-4.4.4-urmb6ss/libs -lnetcdf -lnetcdff
-INC := -I/blues/gpfs/software/centos7/spack-latest/opt/spack/linux-centos7-x86_64/intel-17.0.0/netcdf-fortran-4.4.4-urmb6ss/include
+LIB := -L/gpfs/fs1/soft/chrysalis/spack/opt/spack/linux-centos8-x86_64/intel-20.0.4/netcdf-fortran-4.4.4-2kddbib/lib -lnetcdff
+INC := -I/gpfs/fs1/soft/chrysalis/spack/opt/spack/linux-centos8-x86_64/intel-20.0.4/netcdf-fortran-4.4.4-2kddbib/include
 
 ODIR = odir/
 INC += -I$(ODIR)
