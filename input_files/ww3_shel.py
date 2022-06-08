@@ -9,7 +9,7 @@ def write_ww3_shel_inp():
   pwd = os.getcwd()
   
   f = open(pwd+'/ww3_shel.config')
-  cfg = yaml.load(f)
+  cfg = yaml.load(f, Loader=yaml.Loader)
   pprint.pprint(cfg)
 
   outputs = ["field_output","point_output","track_output","resrt_output","bound_output","sepfd_output"]
@@ -37,6 +37,14 @@ def write_ww3_shel_inp():
   f.write('$\n')
   f.write('$ Define input to be used ---------------------------------------------$'+'\n')
   f.write('$\n')
+  f.write('   '+'F F'                 +'\n') # Ice parameter 1
+  f.write('   '+'F F'                 +'\n') # Ice parameter 2
+  f.write('   '+'F F'                 +'\n') # Ice parameter 3
+  f.write('   '+'F F'                 +'\n') # Ice parameter 4
+  f.write('   '+'F F'                 +'\n') # Ice parameter 5
+  f.write('   '+'F F'                 +'\n') # Mud parameter 1
+  f.write('   '+'F F'                 +'\n') # Mud parameter 2
+  f.write('   '+'F F'                 +'\n') # Mud parameter 3
   f.write('   '+cfg["water_lev_flag"]+ ' F'+'\n') # These varaiables are
   f.write('   '+cfg["current_flag"]  + ' F'+'\n') # assumed to not 
   f.write('   '+cfg["wind_flag"]     + ' F'+'\n') # be homogenous 
