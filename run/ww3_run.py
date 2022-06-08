@@ -280,7 +280,7 @@ if __name__ == '__main__':
  
   # Read configuration file
   f = open(pwd+'/ww3_run.config')
-  cfg = yaml.load(f)
+  cfg = yaml.load(f, Loader=yaml.Loader)
   pprint.pprint(cfg)
 
 
