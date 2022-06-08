@@ -259,13 +259,8 @@ def read_station_file(station_file):
 ################################################################################################
 ################################################################################################
 
-def read_station_data(obs_file,min_date,max_date,variables,output_datetime=None):
+def read_station_data(obs_data,obs_file,min_date,max_date,variables,output_datetime=None):
 
-  # Initialize variable for observation data
-  obs_data = {}
-  for var in variables:
-    obs_data[var] = []  
-  obs_data['datetime'] = []
  
   # Open the observation file
   f = open(obs_file)
@@ -332,17 +327,6 @@ def read_station_data(obs_file,min_date,max_date,variables,output_datetime=None)
         for var in variables:
           col = variables[var]['obs_col'] + col_offset
           obs_data[var].append(line.split()[col])
-
-  # Convert observation data and replace fill values with nan
-  for var in variables:
-    obs_data[var] = np.asarray(obs_data[var])
-    obs_data[var] = obs_data[var].astype(float)
-    fill_val = variables[var]['fill_val']
-    obs_data[var][obs_data[var] >= fill_val] = np.nan
-
-  obs_data['datetime'] = np.asarray(obs_data['datetime'],dtype='O')
-
-  return obs_data
 
 ################################################################################################
 ################################################################################################
@@ -425,6 +409,7 @@ if __name__ == '__main__':
   stations = {}
   if len(runs) > 0:
     for k,run in enumerate(runs):
+      print(run)
       data_files = runs[run]
       if field[run]:
         data[run],stations[run] = interpolate_stations_from_fields(data_files,variables,cfg["station_file"],cfg['start_date']) 
@@ -456,36 +441,54 @@ if __name__ == '__main__':
    
     date_min = cfg["date_min"] 
     date_max = cfg["date_max"] 
+
+  datetime_min = datetime.datetime.strptime(date_min,frmt)
+  datetime_max = datetime.datetime.strptime(date_max,frmt)
     
   #-------------------------------------------------
   # Read observation data and plot for each station
   #-------------------------------------------------
   for i,sta in enumerate(station_list):
     print( sta)
+
+    # Initialize variable for observation data
+    obs_data = {}
+    for var in variables:
+      obs_data[var] = []  
+    obs_data['datetime'] = []
   
-    # Check if observation file exists
-    obs_file = ""
-    obs_file_check = cfg['obs_direc']+sta+'_'+cfg['year']+'.txt'
-    if os.path.isfile(obs_file_check):
-      obs_file = obs_file_check
-    
-    obs_file_check = cfg['obs_direc']+sta+'_'+cfg['year']+'_stdmet.txt'
-    if os.path.isfile(obs_file_check):
-      obs_file = obs_file_check
+    for year in range(datetime_min.year,datetime_max.year+1):
+      # Check if observation file exists
+      obs_file = ""
+      obs_file_check = cfg['obs_direc']+sta+'_'+str(year)+'.txt'
+      if os.path.isfile(obs_file_check):
+        obs_file = obs_file_check
+      
+      obs_file_check = cfg['obs_direc']+sta+'_'+str(year)+'_stdmet.txt'
+      if os.path.isfile(obs_file_check):
+        obs_file = obs_file_check
 
-    obs_file_check = cfg['obs_direc']+sta+'.txt'
-    if os.path.isfile(obs_file_check):
-      obs_file = obs_file_check
+      obs_file_check = cfg['obs_direc']+sta+'.txt'
+      if os.path.isfile(obs_file_check):
+        obs_file = obs_file_check
 
 
-    # Get data from observation file at output times
-    if not obs_file:      
-      print( '  no observation file found')
-      obs_data = {}
-      obs_data['datetime'] = np.array([])
-    else:
-      print( '  '+obs_file)
-      obs_data = read_station_data(obs_file,date_min,date_max,variables)
+      # Get data from observation file at output times
+      if not obs_file:      
+        print( '  no observation file found')
+        obs_data = {}
+        obs_data['datetime'] = np.array([])
+      else:
+        print( '  '+obs_file)
+        read_station_data(obs_data,obs_file,date_min,date_max,variables)
+
+    # Convert observation data and replace fill values with nan
+    for var in variables:
+      obs_data[var] = np.asarray(obs_data[var])
+      obs_data[var] = obs_data[var].astype(float)
+      fill_val = variables[var]['fill_val']
+      obs_data[var][obs_data[var] >= fill_val] = np.nan
+    obs_data['datetime'] = np.asarray(obs_data['datetime'],dtype='O')
         
     # Create figure 
     fig = plt.figure(figsize=[6,2+2*len(variables)])
