@@ -134,7 +134,7 @@ for i,sta in enumerate(stations):
             all_data_exists = False
             break
           else:
-            print('found in webstie')
+            print('found in website')
         except:
           station_found = False
 
