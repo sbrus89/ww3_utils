@@ -9,13 +9,13 @@ import datetime
 pwd = os.getcwd()
 
 # Output type options
-out_types = {'wave':{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
-             'met': {'type':'2','prefix':'cfsr.','subtype':'1'}, # depth, current, wind
-             'spec':{'type':'1','prefix':'spec.','subtype':'3'}} 
+point_out_types = {'wave':{'type':'2','prefix':'ww3.','subtype':'2'},  # mean wave parameters 
+                   'met': {'type':'2','prefix':'cfsr.','subtype':'1'}, # depth, current, wind
+                   'spec':{'type':'1','prefix':'spec.','subtype':'3'}} 
 ###################################################################################################
 ###################################################################################################
 
-def replace_ww3_ounp_inp_line(filename,comment,opt1,opt2=None,opt3=None,opt4=None):
+def replace_ww3_ounp_inp_line(filename,comment,opt1=None,opt2=None,opt3=None,opt4=None,ls=None):
 
   # Find the requested line (nline) in the ww3_ounp input file
   founp = open(pwd+'/'+filename,'r')
@@ -27,7 +27,10 @@ def replace_ww3_ounp_inp_line(filename,comment,opt1,opt2=None,opt3=None,opt4=Non
   
   # Replace the line with the new information (opt1 and opt2) 
   line_info = lines[n].split()
-  line_info[0] = opt1
+  if ls:
+    line_info = ls
+  if opt1:
+    line_info[0] = opt1
   if opt2:
     line_info[1] = opt2
   if opt3:
@@ -41,6 +44,81 @@ def replace_ww3_ounp_inp_line(filename,comment,opt1,opt2=None,opt3=None,opt4=Non
   founp = open(pwd+'/'+filename,'w')
   founp.write('\n'.join(lines))
   founp.close()
+
+###################################################################################################
+###################################################################################################
+
+def write_ounf_inp():
+
+  contents = ['$ -------------------------------------------------------------------- $',
+              '$ WAVEWATCH III NETCDF Grid output post-processing                     $',   
+              '$ -------------------------------------------------------------------- $',
+              '$                                                                       ',
+              '$ start date, increment, number of outputs                              ',
+              '   20050601  000000  3600  721                                          ',
+              '$                                                                       ',
+              '$ Namelist type selection--------------------------------------------- $',
+              '    N                                                                   ',
+              '$ Fields requested --------------------------------------------------- $',
+              '   HS  FP  DP                                                           ',
+              '$                                                                       ',
+              '$ -------------------------------------------------------------------- $',
+              '$ NetCDF version                                                        ',
+              '   4 4                                                                  ',
+              '$ swell partitions                                                      ',
+              '   0  1  2                                                              ',
+              '$ variables in same file                                                ',
+              '   T                                                                    ',
+              '$ file prefix                                                           ',
+              '   ww3.                                                                 ',
+              '$ number of characters in date                                          ',
+              '   10                                                                   ',
+              '$ ix and iy ranges                                                      ',
+              '   0  1000000  0  1000000                                               ',
+              '$ -------------------------------------------------------------------- $',
+              '$ End of input file                                                    $',
+              '$ -------------------------------------------------------------------- $']
+  f = open(pwd+'/ww3_ounf.inp','w')
+  f.write('\n'.join(contents))
+
+###################################################################################################
+###################################################################################################
+
+def write_ounp_inp():
+
+  contents = ['$ -------------------------------------------------------------------- $',
+              '$ WAVEWATCH III NETCDF Point output post-processing                    $',
+              '$ -------------------------------------------------------------------- $',
+              '$                                                                       ',
+              '$ start date, increment, number of outputs                              ',
+              '   20050601  000000  3600  721                                          ',
+              '$                                                                       ',
+              '$ Points requested --------------------------------------------------- $',
+              '$ mandatory end of list                                                 ',
+              '-1                                                                      ',
+              '$                                                                       ',
+              '$ -------------------------------------------------------------------- $',
+              '$ file prefix                                                           ',
+              '   cfsr.                                                                ',
+              '$ number of characters in date                                          ',
+              '   10                                                                   ',
+              '$ NetCDF version                                                        ',
+              '   4                                                                    ',
+              '$ points in same file, max number of points processed in one pass       ',
+              '   T  150                                                               ',
+              '$ output type                                                           ',
+              '   2                                                                    ',
+              '$ flag for global attributes                                            ',
+              '   0                                                                    ',
+              '$ flag for dimensions order                                             ',
+              '   T                                                                    ',
+              '$ sub-type                                                              ',
+              '   1                                                                    ',
+              '$ -------------------------------------------------------------------- $',
+              '$ End of input file                                                    $',
+              '$ -------------------------------------------------------------------- $']
+  f = open(pwd+'/ww3_ounp.inp','w')
+  f.write('\n'.join(contents))
 
 ###################################################################################################
 ###################################################################################################
@@ -71,8 +149,10 @@ if __name__ == '__main__':
 
     # Check if the ww3_ounp input file exists
     if not os.path.isfile(pwd+'/'+exe+'.inp'):
-      print(exe+'.inp not found')
-      raise SystemExit(0)
+      if exe == 'ww3_ounf':
+        write_ounf_inp()
+      else:
+        write_ounp_inp()
     
     # Loop over all out_pnt.ww3.YYYYMMDD_HHMMSS-YYMMDD_HHMMSS files
     pnt_files = sorted(glob.glob(cfg['output_direc']+filename+'.ww3*'))
@@ -94,18 +174,18 @@ if __name__ == '__main__':
         output_interval = 3600
       
       # Replace the time information line
-      replace_ww3_ounp_inp_line(exe+'.inp','start date',start.split()[0],start.split()[1],str(output_interval),noutputs)
+      replace_ww3_ounp_inp_line(exe+'.inp','start date',opt1=start.split()[0],opt2=start.split()[1],opt3=str(output_interval),opt4=noutputs)
 
       if out_type == 'points':
   
-        for out_type in cfg['point_out_types']:
+        for point_out_type in cfg['point_out_types']:
   
-          otype = out_types[out_type]
+          otype = point_out_types[point_out_type]
           
           # Replace the output type information lines
-          replace_ww3_ounp_inp_line(exe+'.inp','file prefix' ,otype['prefix'])
-          replace_ww3_ounp_inp_line(exe+'.inp','output type' ,otype['type'])
-          replace_ww3_ounp_inp_line(exe+'.inp','sub-type',otype['subtype'])
+          replace_ww3_ounp_inp_line(exe+'.inp','file prefix' ,opt1=otype['prefix'])
+          replace_ww3_ounp_inp_line(exe+'.inp','output type' ,opt1=otype['type'])
+          replace_ww3_ounp_inp_line(exe+'.inp','sub-type',opt1=otype['subtype'])
     
           # Run the ww3_ounp program
           subprocess.call(['srun','-n','4',pwd+'/ww3_ounp'])
@@ -113,6 +193,7 @@ if __name__ == '__main__':
       elif out_type == 'fields':
 
         #Run the ww3_ounf program
+        replace_ww3_ounp_inp_line(exe+'.inp','Fields requested' ,ls=cfg['fields_requested'])
         subprocess.call([pwd+'/ww3_ounf'])
     
     # Move file to data directory
