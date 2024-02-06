@@ -1,4 +1,3 @@
-import pyflann
 from scipy import spatial
 import numpy as np
 import shapefile
@@ -6,7 +5,7 @@ import timeit
 
 km = 1000.0
 
-def distance_to_shapefile_points(shpfiles,lon,lat,sphere_radius,reggrid=False,nn_search='flann'):
+def distance_to_shapefile_points(shpfiles,lon,lat,sphere_radius,reggrid=False):
 
 
     # Get coastline coordinates from shapefile
@@ -35,15 +34,7 @@ def distance_to_shapefile_points(shpfiles,lon,lat,sphere_radius,reggrid=False,nn
     npts = coast_pts.shape[0]
     coast_pts_xyz = np.zeros((npts,3))
     coast_pts_xyz[:, 0], coast_pts_xyz[:, 1], coast_pts_xyz[:, 2] = lonlat2xyz(coast_pts[:, 0], coast_pts[:, 1], sphere_radius)
-    if nn_search == "kdtree":
-        tree = spatial.KDTree(coast_pts_xyz)
-    elif nn_search == "flann":
-        flann = pyflann.FLANN()
-        flann.build_index(
-            coast_pts_xyz,
-            algorithm='kdtree',
-            target_precision=1.0,
-            random_seed=0)
+    tree = spatial.KDTree(coast_pts_xyz)
 
     # Make sure longitude and latitude are in radians
     if np.amax(lon) < 2.1*np.pi:
@@ -67,11 +58,7 @@ def distance_to_shapefile_points(shpfiles,lon,lat,sphere_radius,reggrid=False,nn
     # Find distances of background grid coordinates to the coast
     print("   Finding distance")
     start = timeit.default_timer()
-    if nn_search == "kdtree":
-        d, idx = tree.query(pts)
-    elif nn_search == "flann":
-        idx, d = flann.nn_index(pts, checks=2000, random_seed=0)
-        d = np.sqrt(d)
+    d, idx = tree.query(pts)
     end = timeit.default_timer()
     print("   Done")
     print("   " + str(end - start) + " seconds")
